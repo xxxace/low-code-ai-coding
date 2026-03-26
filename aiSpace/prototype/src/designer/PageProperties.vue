@@ -19,15 +19,26 @@
         </el-select>
       </el-form-item>
       <el-form-item label="布局列数">
-        <div class="columns-presets">
+        <div class="columns-row">
+          <!-- 快捷选项 -->
           <el-radio-group v-model="form.columns" size="small" @change="handleChange">
-            <el-radio-button :value="1">1列</el-radio-button>
-            <el-radio-button :value="2">2列</el-radio-button>
-            <el-radio-button :value="3">3列</el-radio-button>
-            <el-radio-button :value="4">4列</el-radio-button>
+            <el-radio-button :value="1">1</el-radio-button>
+            <el-radio-button :value="2">2</el-radio-button>
+            <el-radio-button :value="3">3</el-radio-button>
+            <el-radio-button :value="4">4</el-radio-button>
           </el-radio-group>
+          <!-- 自定义列数输入 -->
+          <el-input-number
+            v-model="form.columns"
+            :min="1"
+            :max="24"
+            :controls="false"
+            size="small"
+            class="columns-custom-input"
+            @change="handleChange"
+          />
         </div>
-        <div class="columns-hint">字段宽度 = 占 x-span 列 / {{ form.columns }} 列</div>
+        <div class="columns-hint">当前 {{ form.columns }} 列，字段宽度 = x-span / {{ form.columns }}</div>
       </el-form-item>
       <el-form-item label="布局类型">
         <el-select v-model="form.layoutType" @change="handleChange">
@@ -99,8 +110,15 @@ function handleChange() {
   padding-bottom: 16px;
 }
 
-.columns-presets {
+.columns-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
+}
+
+.columns-custom-input {
+  width: 56px;
 }
 
 .columns-hint {

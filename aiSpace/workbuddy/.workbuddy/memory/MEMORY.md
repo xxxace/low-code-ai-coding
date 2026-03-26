@@ -79,6 +79,25 @@ TypeScript 类型检查：零错误
 - ✅ DesignOverlay：`getActionsStyle()` 函数统一四向边界检测，操作栏始终在画布内可见
 - ✅ 奥卡姆剃刀：移除操作栏快速列宽按钮（非必要功能）
 
+## 第十阶段（2026-03-26）：columns 响应式根治 + 自定义列数输入
+
+- ✅ `handlePagePropsUpdate` 改为原地修改（`Object.assign(engine.schema.value.formConfig, ...)`），不再深拷贝替换整个 schema 对象，彻底解决 Vue reactive proxy 被新 plain object 覆盖导致响应式失效的问题
+- ✅ 布局列数 UI 升级：快捷按钮（1/2/3/4）+ el-input-number 自定义输入框（1-24），共享同一 `form.columns`
+
+## 第十一阶段（2026-03-26）：条件渲染可见性 + Property Setter 体系
+
+### 条件渲染字段设计时不可见问题
+- **方案**：`FormRenderer` 新增 `designMode` prop，通过 `provide('designMode', true)` 传给所有子组件
+- `FieldRenderer` 注入 `designMode`，当为 true 时强制 `display !== 'none'` 为可见（忽略联动）
+- hidden 状态字段在设计模式下显示为半透明 + 黄色虚线边框（提示有隐藏规则）
+
+### Property Setter 体系
+- **类型**：在 `WidgetMeta` 里新增 `propSetters?: PropSetterGroup[]`，每个 Setter 有 key/label/setter/options/tip
+- **Setter 类型**：text / number / boolean / select / options / code / json
+- **组件覆盖**：为全部 16 个注册组件（Input/Textarea/InputNumber/Password/Select/Cascader/TreeSelect/CheckboxGroup/RadioGroup/DatePicker/DateRangePicker/TimePicker/DateTimePicker/Switch/Slider/Rate/ColorPicker/Upload）配置了专属 propSetters
+- **新组件**：`PropGroup.vue`（带折叠的属性分组）、`OptionsEditor.vue`（枚举选项编辑器）
+- **FieldProperties 重构**：从硬编码改为动态渲染；顶部增加字段类型标识徽章；联动规则增加"结果类型"下拉（visible/hidden/disabled/readOnly/required）
+
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
 - 编写单元测试（ReactionsEngine、FormModel）

@@ -63,11 +63,18 @@ interface Props {
   readOnly?: boolean
   /** 禁用模式（覆盖 schema.formConfig.disabled） */
   disabled?: boolean
+  /**
+   * 设计模式：
+   * - 强制所有字段显示（忽略联动的 display:none）
+   * - 禁止字段交互（pointer-events 由外层 CSS 控制）
+   */
+  designMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   readOnly: false,
   disabled: false,
+  designMode: false,
 })
 
 const emit = defineEmits<{
@@ -195,6 +202,8 @@ provide('formRenderer', {
     execLifeCycleHook('onFormDataChange')
   },
 })
+// 设计模式标识，供 FieldRenderer 等子组件注入使用
+provide('designMode', props.designMode)
 
 // 注入 ComponentRegistry（从父组件获取或创建默认的）
 const componentRegistry = useComponentRegistry()

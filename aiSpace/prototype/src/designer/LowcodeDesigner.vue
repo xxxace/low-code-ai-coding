@@ -95,9 +95,10 @@
 
           <!-- Renderer 预览（设计模式下禁用交互） -->
           <div v-else-if="currentSchema" class="canvas-renderer">
-            <!-- 实际 Renderer（pointer-events: none 防止交互） -->
+            <!-- 实际 Renderer（设计模式：强制显示所有字段、禁止交互） -->
             <FormRenderer
               :schema="currentSchema"
+              :design-mode="true"
               class="canvas-renderer__preview"
             />
 
@@ -338,9 +339,11 @@ function handleCanvasDrop(e: DragEvent): void {
 
 function handlePagePropsUpdate(updates: Partial<PageSchema>): void {
   if (!engine.schema.value) return;
-  const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
-  Object.assign(newSchema, updates);
-  engine.schema.value = newSchema;
+  // 直接原地修改 schema，确保 Vue 响应式链路不被新对象替换打断
+  if (updates.name !== undefined) engine.schema.value.name = updates.name;
+  if (updates.formConfig) {
+    Object.assign(engine.schema.value.formConfig, updates.formConfig);
+  }
   engine.saveSnapshot();
 }
 

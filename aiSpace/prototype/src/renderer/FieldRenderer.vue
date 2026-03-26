@@ -14,13 +14,13 @@
   - readPretty 模式（只读显示态）单独渲染文本
 -->
 <template>
-  <!-- display = none：完全不渲染，也不占空间 -->
-  <template v-if="fieldState?.display !== 'none'">
-    <!-- display = hidden：占位但不显示 -->
+  <!-- display = none：完全不渲染（设计模式下忽略此状态，强制可见）-->
+  <template v-if="designMode || fieldState?.display !== 'none'">
+    <!-- display = hidden：占位但不显示（设计模式下改为虚显，有占位但半透明） -->
     <div
-      v-show="fieldState?.display !== 'hidden'"
+      v-show="designMode || fieldState?.display !== 'hidden'"
       class="lowcode-field-wrapper"
-      :class="fieldWrapperClass"
+      :class="[fieldWrapperClass, designMode && fieldState?.display === 'hidden' ? 'lowcode-field-wrapper--design-hidden' : '']"
       :data-field-path="path"
       :data-field-id="schema['x-id']"
     >
@@ -176,6 +176,9 @@ const registry = useComponentRegistry()
 const formRendererCtx = inject<{
   onFieldChange: (path: string, value: any) => void
 }>('formRenderer')
+
+/** 设计模式：强制所有字段可见，忽略联动 display 状态 */
+const designMode = inject<boolean>('designMode', false)
 
 // ============================================================
 // 字段状态（响应式）
@@ -392,6 +395,13 @@ const elFormRules = computed(() => {
 .lowcode-field__unregistered {
   color: #c0c4cc;
   font-size: 12px;
+}
+
+/** 设计模式下，display:hidden 的字段显示为半透明（提示设计者此字段有隐藏规则） */
+.lowcode-field-wrapper--design-hidden {
+  opacity: 0.4;
+  outline: 1px dashed #faad14;
+  outline-offset: -1px;
 }
 
 .lowcode-field__extra {
