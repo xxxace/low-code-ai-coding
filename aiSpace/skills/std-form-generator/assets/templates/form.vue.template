@@ -1,0 +1,121 @@
+<template>
+  <StdFormWrapper :toolbar="showToolbar">
+    <div class="!min-w-[700px] relative">
+      <!-- {{HEADER_FIELDS}} -->
+      <div class="whitespace-nowrap mt-1">
+        {{FIELD_ITEMS}}
+      </div>
+      
+      <!-- {{DETAIL_SECTION}} -->
+      {{#HAS_DETAIL}}
+      <AceFieldset legend="明细" class="mt-2">
+        <template #legend>
+          <div class="flex gap-2 items-center">
+            <span>明细</span>
+            <el-button size="small" @click="handleAddDetail">添加</el-button>
+          </div>
+        </template>
+        <{{DetailTable}}
+          ref="detailTableRef"
+          :data="detailList"
+          @currentRowChange="handleDetailRowChange"
+        />
+      </AceFieldset>
+      {{/HAS_DETAIL}}
+    </div>
+  </StdFormWrapper>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import dayjs from 'dayjs'
+import StdFormWrapper from '@/components/StdForm/index.vue'
+import FieldItem from '@/components/FieldItem/index.vue'
+import AceFieldset from '@/components/AceFieldset/index.vue'
+import { useStdForm } from '@/components/StdForm/composeble/useStdForm'
+import { useRefManager, useArrayRefManager } from '@/hooks/useRefManager'
+import { useSetupStdFormMeta } from '@/hooks/useSetupStdFormMeta'
+import { useNsI18n } from '@/hooks/useNsI18n'
+import { formRelation } from './relations/form'
+import { formRules } from './validationRules'
+import type { {{ModuleName}}VO } from './types'
+{{#HAS_DETAIL}}
+import type { {{Detail}}VO } from './types'
+{{/HAS_DETAIL}}
+import { fetch{{ModuleName}} } from '../api'
+
+// ==================== Configuration ====================
+defineOptions({
+  objectName: '{{I18N_KEY}}'
+})
+
+// ==================== Hooks ====================
+const stdForm = useStdForm()
+stdForm.toolbar.print = false
+
+useSetupStdFormMeta(stdForm)
+const { t, c } = useNsI18n('{{I18N_KEY}}')
+
+// ==================== Data Management ====================
+const [form, formManager] = useRefManager<{{ModuleName}}VO>(() => ({
+  BLTY: '{{BUSINESS_TYPE}}',
+  STFG: 'BL_D',
+  STDT: dayjs().format('YYYY-MM-DD')
+}))
+formManager.setRules(formRules)
+
+{{#HAS_DETAIL}}
+const [detailList, detailListManager] = useArrayRefManager<{{Detail}}VO>([])
+const detailTableRef = ref()
+{{/HAS_DETAIL}}
+
+// ==================== Relation Configuration ====================
+formRelation.manager = formManager
+formRelation.sqlQuery = (params) => ({
+  loader: {{moduleName}}Loader,
+  params: Object.keys(params).reduce((pre, key) => {
+    pre[`A.${key}`] = params[key]
+    return pre
+  }, {})
+})
+stdForm.relationRegister.register(formRelation)
+
+{{#HAS_DETAIL}}
+detailRelation.manager = detailListManager
+detailRelation.sqlQuery = (params) => ({
+  sql: `{{DETAIL_QUERY_SQL}}`,
+  params: { {{PK}}: params.{{PK}} }
+})
+stdForm.relationRegister.register(detailRelation)
+{{/HAS_DETAIL}}
+
+// ==================== Data Loader ====================
+const {{moduleName}}Loader = async (params) => {
+  const item = await fetch{{ModuleName}}({ where: params })
+  return item
+}
+
+// ==================== Lifecycle Hooks ====================
+stdForm.onInitDone(async () => {
+  // Post-initialization logic
+})
+
+stdForm.onBeforeSubmit(async () => {
+  // Pre-submit validation
+  return true
+})
+
+// ==================== Event Handlers ====================
+{{#HAS_DETAIL}}
+const handleAddDetail = () => {
+  detailTableRef.value?.addRow({
+    {{PK}}: form.value.{{PK}},
+    SEQ: detailListManager.records.length + 1
+  })
+}
+
+const handleDetailRowChange = (row: {{Detail}}VO) => {
+  // Handle detail row selection
+}
+{{/HAS_DETAIL}}
+</script>

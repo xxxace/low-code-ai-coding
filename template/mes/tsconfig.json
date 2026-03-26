@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "useDefineForClassFields": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "jsx": "preserve",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "jsxImportSource": "vue",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "baseUrl": "./",
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "strictFunctionTypes": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "experimentalDecorators": true,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "$types/*": [
+        "types/*"
+      ]
+    },
+    "types": [
+      "@intlify/unplugin-vue-i18n/types",
+      "vite/client",
+      "element-plus/global",
+      "@types/qrcode",
+      "vite-plugin-svg-icons/client"
+    ]
+  },
+  "include": [
+    "src",
+    "src/**/*.d.ts",
+    "types/**/*.ts",
+    "types/**/*.d.ts",
+    "mock/**/*.ts",
+    "node_modules/.pnpm/unplugin-auto-import@0.18.3_@nuxt+kit@3.15.0_rollup@4.20.0__@vueuse+core@10.11.1_vue@3.5.13_t_roberv7btgawm3uhmioxxw4ivu/node_modules/unplugin-auto-import/auto-imports.d.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}

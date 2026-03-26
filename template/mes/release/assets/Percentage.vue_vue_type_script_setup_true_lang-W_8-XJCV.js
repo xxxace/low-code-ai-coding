@@ -1,0 +1,1 @@
+import{y as a,c,z as o,A as s,Q as r,I as p}from"./vue-chunks-Bcf7UqPq.js";const m={key:0,class:"inline-block ml-1"},g=a({__name:"Percentage",props:{percentage:{}},setup(t){const e=t,n=c(()=>e.percentage>0&&e.percentage<100);return(i,l)=>n.value?(o(),s("span",m,r(e.percentage)+"%",1)):p("",!0)}});export{g as _};

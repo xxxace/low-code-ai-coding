@@ -1,0 +1,373 @@
+.vxe-table.vxe-table--render-default.size--mini,
+.vxe-grid.size--mini {
+  --vxe-table-row-height-mini: 24px !important;
+  --vxe-ui-table-row-height-mini: 24px !important;
+  --vxe-ui-table-border-color: #e1e1e1;
+
+  .vxe-table--main-wrapper {
+    position: relative;
+    z-index: 5;
+  }
+
+  .vxe-table--fixed-left-wrapper {
+    .vxe-body--row.row--current .vxe-body--column:first-child {
+      .vxe-cell {
+        border-left: 1px solid var(--row-current-color);
+      }
+    }
+
+    tr:has(.col--active),
+    .vxe-body--row.row--current .vxe-body--column:last-child {
+      border-right: none;
+
+      .vxe-cell {
+        border-right: none;
+      }
+    }
+  }
+
+  .vxe-table--body-wrapper.fixed-right--wrapper {
+    tr,
+    .vxe-cell,
+    .vxe-body--row.row--current .vxe-body--column:first-child {
+      border-left: none !important;
+    }
+  }
+
+  .vxe-table--fixed-right-wrapper {
+    .vxe-body--row.row--current .vxe-body--column:first-child {
+      border-left: none !important;
+    }
+
+    tr:has(.col--active),
+    .vxe-body--row.row--current .vxe-body--column:last-child {
+      border-right: 1px solid var(--row-current-color);
+    }
+  }
+
+  .vxe-cell--title {
+    font-weight: bold;
+    color: #000;
+  }
+
+  .vxe-table--render-default .vxe-tree--line {
+    z-index: 1;
+  }
+
+  .vxe-body--row.row--current {
+    --z-index: 1;
+    --row-current-color: #3a71ff;
+
+    z-index: var(--z-index);
+  }
+
+  .vxe-body--row.row--current .vxe-body--column {
+    border-top: 1px solid var(--row-current-color);
+    border-bottom: 1px solid var(--row-current-color);
+    z-index: var(--z-index);
+  }
+
+  .vxe-body--row.row--current .vxe-body--column:first-child {
+    position: relative;
+    border-left: 1px solid var(--row-current-color);
+    z-index: var(--z-index);
+
+    .vxe-cell {
+      border-left: 1px solid var(--row-current-color);
+    }
+  }
+
+  // tr:has(.col--active),
+  .vxe-body--row.row--current .vxe-body--column:last-child {
+    border-right: 1px solid var(--row-current-color);
+    z-index: var(--z-index);
+
+    .vxe-cell {
+      border-right: 1px solid var(--row-current-color);
+    }
+  }
+
+  .vxe-body--column,
+  .vxe-footer--column {
+    padding: 0 !important;
+  }
+
+  .vxe-header--column {
+    padding: 4px 0 !important;
+  }
+
+  .vxe-body--column .vxe-cell {
+    height: var(--vxe-ui-table-row-height-mini);
+    min-height: var(--vxe-table-row-height-mini);
+  }
+
+  .vxe-cell {
+    --vxe-ui-table-cell-padding: 0px;
+    --vxe-ui-table-cell-padding-left: 0px;
+    --vxe-ui-table-cell-padding-right: 0px;
+    --vxe-ui-table-validate-error-color: #ff0d0d;
+    width: 100% !important;
+    padding: 0 !important;
+    font-size: 13px;
+    color: #000;
+  }
+
+  .vxe-cell > span:first-child,
+  .vxe-cell .vxe-cell--title,
+  .vxe-cell .vxe-cell--wrapper > span:first-child,
+  .vxe-cell--label > span:first-child {
+    padding: 0 4px;
+  }
+
+  .vxe-cell .vxe-default-input,
+  .vxe-cell .vxe-default-select,
+  .vxe-cell .vxe-default-textarea,
+  .vxe-cell .vxe-date-picker,
+  .vxe-cell .vxe-input,
+  .vxe-cell .el-checkbox {
+    height: 24px;
+    line-height: normal;
+    border-radius: 0;
+  }
+
+  .vxe-cell .vxe-date-picker {
+    .vxe-date-picker--wrapper {
+      .vxe-date-picker--inner {
+        text-align: center;
+      }
+    }
+
+    .vxe-date-picker--suffix {
+      display: none;
+    }
+  }
+
+  .vxe-cell .vxe-input .vxe-input--inner {
+    border-radius: 0;
+    font-size: 14px;
+    color: #000;
+    padding: 0;
+  }
+
+  .col--active .vxe-cell {
+    padding: 0;
+  }
+}
+
+.view-container {
+  --el-text-color-regular: #000000;
+  --vxe-ui-font-color: var(--el-text-color-regular);
+  --vxe-ui-font-primary-color: var(--el-color-primary);
+  --el-component-size: 22px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .el-form:not(.el-form--inline) {
+    .el-form-item {
+      margin-right: 10px;
+    }
+  }
+
+  .el-form-item--small {
+    margin-bottom: 12px !important;
+  }
+
+  .el-date-editor.el-input,
+  .el-date-editor.el-input__wrapper {
+    width: 100%;
+  }
+
+  .action-bar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    padding: 0 0 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--el-border-color);
+    text-align: right;
+    background-color: #fff;
+    z-index: 1;
+  }
+
+  .el-input__wrapper {
+    --el-input-height: 22px;
+    padding: 1px 4px;
+    border-radius: 0;
+  }
+
+  .el-textarea__inner {
+    padding: 1px 4px;
+    border-radius: 0;
+  }
+
+  .el-select__wrapper {
+    border-radius: 0;
+  }
+
+  .el-date-editor {
+    width: 100%;
+  }
+
+  .vxe-button.size--mini {
+    height: 22px;
+    padding: 0 0.5em;
+  }
+
+  .el-tabs {
+    --el-tabs-header-height: 22px;
+  }
+
+  .el-tabs__header {
+    margin-bottom: 0;
+  }
+
+  .el-tabs__content {
+    margin: 0;
+    padding: 10px 0 0;
+    border-left: 1px solid;
+    border-bottom: 1px solid;
+    border-right: 1px solid;
+    border-color: var(--el-border-color-light);
+  }
+
+  .el-button--small {
+    --el-button-size: 22px;
+    padding: 4px 10px;
+  }
+
+  .el-checkbox__input.is-disabled.is-checked .el-checkbox__inner {
+    background-color: var(--el-checkbox-checked-bg-color) !important;
+    border-color: var(--el-checkbox-checked-input-border-color) !important;
+  }
+
+  .el-checkbox__input.is-checked .el-checkbox__inner:after {
+    border-color: var(--el-checkbox-checked-icon-color) !important;
+  }
+
+
+}
+
+.el-year-table td {
+  width: 56px !important;
+}
+
+.el-date-picker {
+  width: 238px !important;
+
+  .el-date-table th,
+  .el-date-table td {
+    padding: 0px !important;
+  }
+
+  .el-date-picker__header {
+    margin: 4px !important;
+    padding: 12px 6px 0 !important;
+  }
+
+  .el-picker-panel__content {
+    margin: 4px !important;
+    width: 230px !important;
+  }
+
+  .el-month-table td {
+    cursor: pointer;
+    padding: 8px 0;
+    position: relative;
+    text-align: center;
+    width: 56px;
+  }
+}
+
+.el-date-editor .el-range-input {
+  height: 20px;
+  line-height: 20px;
+}
+
+.el-message {
+  min-width: 0px !important;
+  padding: 10px 20px 10px 20px !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  // background-image: radial-gradient(transparent 1px, #ffffff 1px) !important;
+  // background-size: 4px 4px !important;
+  backdrop-filter: saturate(50%) blur(4px) !important;
+  box-shadow: 0px 1px 10px rgba(124, 166, 214, 0.2) !important;
+
+  .el-message-icon--info {
+    color: #3d89ff !important;
+  }
+
+  .el-message__content {
+    color: black !important;
+  }
+}
+
+.el-menu--collapse > div > .el-submenu > .el-submenu__title span {
+  height: 0;
+  width: 0;
+  overflow: hidden;
+  visibility: hidden;
+  display: inline-block;
+}
+
+.el-menu--collapse > div > .el-submenu > .el-submenu__title .el-submenu__icon-arrow {
+  display: none;
+}
+
+.el-notification {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: saturate(50%) blur(4px) !important;
+}
+
+.el-message-box__wrapper {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(1px);
+}
+
+.el-message-box {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.vxe-cell {
+  .el-checkbox {
+    height: 22px !important;
+
+    .el-checkbox__label {
+      padding-left: 0px;
+    }
+  }
+}
+
+.el-button {
+  --el-color-danger: #ff0c0c;
+  --el-color-danger-light-3: #ff5959;
+  --el-color-danger-light-5: #ff8686;
+  --el-color-danger-light-7: #ffb3b3;
+  --el-color-danger-light-8: #ffcccc;
+  --el-color-danger-light-9: #ffddd7;
+}
+
+.el-input__prefix-inner > :last-child {
+  margin-right: 2px !important;
+}
+
+.el-input.is-disabled .el-input__wrapper {
+  cursor: text !important;
+  pointer-events: auto !important;
+}
+
+.vxe-date-range-picker.size--mini {
+  --vxe-ui-input-height-mini: 23px;
+  --vxe-ui-base-border-radius: 0;
+}

@@ -1,0 +1,39 @@
+// function validateRows(id: string, rows: any[], notNullColumns: DataColumn[]) {
+//   const invalidatedList: InvalidtedFieldInfo[] = []
+//   let index = -1
+//   for (const row of rows) {
+//     index++
+//     for (const column of notNullColumns) {
+//       if (row[column.field] === undefined || row[column.field] === null) {
+//         invalidatedList.push({
+//           id,
+//           field: column.field,
+//           message: `${column.field}${column.description ? ` - ${column.description}` : ''} is Null`,
+//           index
+//         })
+//       }
+//     }
+//   }
+
+//   return invalidatedList
+// }
+
+// export async function validateSubmissionHandler(
+//   store: StdFormStore,
+//   valueChanges: StdFormValueChanges
+// ) {
+//   const invalidatedList: InvalidtedFieldInfo[] = []
+
+//   for (const valueChange of valueChanges) {
+//     const relation = store.relationRegister.relations.find((r) => r.id === valueChange.id)
+//     const notNullColumns = relation?.table.columns.filter((col) => col.notNull)
+//     const newValue =
+//       valueChange.newValue instanceof Array ? valueChange.newValue : [valueChange.newValue]
+
+//     if (newValue.length && notNullColumns) {
+//       invalidatedList.push(...validateRows(valueChange.id, newValue, notNullColumns))
+//     }
+//   }
+
+//   return invalidatedList
+// }

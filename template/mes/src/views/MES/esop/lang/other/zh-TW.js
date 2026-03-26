@@ -1,0 +1,28 @@
+// 中文-繁体
+export default {
+  leftTitle: '自定義-工作指南',
+  pageLeftTitle: '縫盤-挑撞作業指南',
+  orderNo: '批號',
+  types: '類型',
+  viewSize: '查看大小',
+  seamRequirements: '縫盤要求',
+  challengingRequirements: '挑撞要求',
+  specialAttention: '特別留意',
+  addNotes: '添加備註',
+  notes: '備註',
+  styleNumber: '款號',
+  needle: '針數',
+  shape: '款式',
+  rawMaterial: '原料',
+  diagram: '圖示',
+  table: '表格',
+  approved: '核準',
+  scareMaster: '嚇數師傅',
+  seamMaster: '縫盤師傅',
+  date: '日期',
+  print: '打印',
+  text: '文本',
+  edit: '請編輯內容',
+  ed: '編輯',
+  pc: '請選擇'
+};

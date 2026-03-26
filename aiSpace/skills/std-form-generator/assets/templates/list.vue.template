@@ -1,0 +1,84 @@
+<template>
+  <div class="view-container w-full h-full box-border relative bg-white p-1 overflow-auto flex flex-col">
+    <!-- Query Section -->
+    <AceFieldset legend="查询" class="overflow-hidden min-w-[900px]">
+      <FieldItemGroup :disabled="loading">
+        <div>
+          {{QUERY_FIELDS}}
+          <FieldItem :width="0">
+            <el-button type="primary" size="small" :loading="loading" @click="loadData">
+              {{ c('common.search', '查询') }}
+            </el-button>
+            <el-button size="small" :loading="loading" @click="handleReset">
+              {{ c('common.reset', '重置') }}
+            </el-button>
+          </FieldItem>
+        </div>
+      </FieldItemGroup>
+    </AceFieldset>
+    
+    <!-- Data Section -->
+    <div class="flex-1 flex flex-col" v-ace-loading="loading">
+      <AceFieldset class="flex-1" legend="数据列表">
+        <{{ModuleName}}Table 
+          :data="dataList" 
+          @open-detail="handleOpenForm"
+          @currentRowChange="handleCurrentRowChange"
+        />
+      </AceFieldset>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useParamsRefManager, useArrayRefManager } from '@/hooks/useRefManager'
+import { useNsI18n } from '@/hooks/useNsI18n'
+import AceFieldset from '@/components/AceFieldset/index.vue'
+import FieldItem from '@/components/FieldItem/index.vue'
+import FieldItemGroup from '@/components/FieldItemGroup/index.vue'
+import {{ModuleName}}Table from './components/{{ModuleName}}Table.vue'
+import { fetch{{ModuleName}}List } from './api'
+import type { {{ModuleName}}VO } from './types'
+
+const { t, c } = useNsI18n('{{I18N_KEY}}')
+const loading = ref(false)
+
+// ==================== Query Params ====================
+const [query, queryManager] = useParamsRefManager(() => ({
+  {{QUERY_DEFAULT_VALUES}}
+}))
+
+// ==================== Data List ====================
+const [dataList, dataListManager] = useArrayRefManager<{{ModuleName}}VO>([])
+
+// ==================== Load Data ====================
+const loadData = async () => {
+  loading.value = true
+  try {
+    const params = query.value
+    const list = await fetch{{ModuleName}}List({
+      where: {
+        {{WHERE_CONDITIONS}}
+      }
+    })
+    dataListManager.update(list)
+  } catch (err: any) {
+    ElMessageBox.alert(`获取列表错误：${err.message}`)
+  }
+  loading.value = false
+}
+
+const handleReset = () => {
+  queryManager.reset()
+}
+
+const handleOpenForm = (row?: {{ModuleName}}VO) => {
+  // Navigate to form page
+  // router.push({ path: '/{{module-name}}-form', query: { id: row?.{{PK}} } })
+}
+
+const handleCurrentRowChange = (row: {{ModuleName}}VO) => {
+  // Handle row selection
+}
+</script>

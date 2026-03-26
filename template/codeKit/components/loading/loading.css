@@ -1,0 +1,54 @@
+.loading-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: rgb(241 241 241 / 30%);
+  backdrop-filter: blur(1px);
+  flex-direction: column;
+  user-select: none;
+  transition: all 0.5s ease-in-out;
+  cursor: progress;
+}
+
+.loading-container .loading-content {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  display: flex;
+  transform: translate3d(-50%, -44%, 0);
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-content .loading-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 48px;
+  color: rgb(0 0 0 / 85%);
+  font-weight: bold;
+}
+
+.loading-content .loading-title .skeleton-text {
+  display: inline-block;
+background: linear-gradient(90deg, #e6e6e6 25%, #bcbcbc 50%, #e6e6e6 75%);
+ /* background: linear-gradient(90deg, #d3d3d3 25%, #a9a9a9 50%, #d3d3d3 75%); */
+  background-size: 200% 100%;
+  background-clip: text;
+  border-radius: 4px;
+  animation: shimmer 1s infinite linear;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes shimmer {
+  100% {
+    background-position: -200% 0;
+  }
+}

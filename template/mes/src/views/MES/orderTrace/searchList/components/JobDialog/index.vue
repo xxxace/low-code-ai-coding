@@ -1,0 +1,80 @@
+<template>
+  <DialogPicker
+    ref="dialogPickerRef"
+    :title="t('ttJobQuery', '工序查询')"
+    width="640px"
+    height="600px"
+    mode="confirm"
+    lock-view
+    footer
+    :manager="queryParamsManager"
+    :sql="sql"
+    :sort-by="sortby"
+    :columns="columns"
+    @confirm="handleConfirm"
+  >
+    <template #search="{ onSearch, onReset }">
+      <FieldItem :label="t('lbJOBNO', '编码')" :width="56">
+        <el-input class="w-[120px]!" v-model="queryParams['PJ.JOBNO__like']" />
+      </FieldItem>
+
+      <FieldItem :label="t('lbCNAME', '名称')" :width="28">
+        <el-input class="w-[120px]!" v-model="queryParams['PJ.CNAME__like']" />
+      </FieldItem>
+
+      <FieldItem class="align-bottom">
+        <el-button type="primary" size="small" @click="() => handleSearch(onSearch)"
+          >{{ c('查询', 'common.query') }}
+        </el-button>
+        <el-button size="small" @click="onReset">{{ c('重置', 'common.reset') }}</el-button>
+      </FieldItem>
+    </template>
+  </DialogPicker>
+</template>
+<script setup lang="ts">
+import DialogPicker from '@/components/Nameson/Dialog/DialogPicker.vue'
+import { useParamsRefManager } from '@/hooks/nameson/useRefManager'
+import { useStdFormI18n } from '@/hooks/nameson/useI18nProxy'
+import { VxeGridPropTypes } from 'vxe-table'
+import { useI18nReactive } from '@/hooks/nameson/useI18nReactive'
+import { ref } from 'vue'
+import { getResizeModelExposeProxy } from '@/utils'
+import { useStdForm } from '@/components/StdForm/composeble/useStdForm'
+import { useRemoteSqlMap } from '@/hooks/nameson/useFetchSql'
+
+const emit = defineEmits(['confirm'])
+const remoteSqlMap = useRemoteSqlMap({ objectName: 'VUE_MES_ORDSCH' })
+
+const props = defineProps<{
+  sql: any
+}>()
+
+const { t, c } = useStdFormI18n()
+const dialogPickerRef = ref(null)
+// 过滤参数
+const [queryParams, queryParamsManager] = useParamsRefManager(() => {
+  return {
+    ['PJ.JOBNO__like']: '',
+    ['PJ.CNAME__like']: ''
+  }
+})
+
+// 列配置
+const columns = useI18nReactive<VxeGridPropTypes.Column<any>[]>(() => {
+  return [
+    { type: 'seq', width: 50 },
+    { field: 'JOBNO', title: t('gvJOBFLOW_JOBNO', '编码'), width: 100 },
+    { field: 'JOBNAME', title: t('gvJOBFLOW_JOBNAME', '名称') }
+  ]
+})
+// 查询语句
+const sql = () => props.sql
+const sortby = () => remoteSqlMap['工序清单的查询语句'].SORTBYCONTENT
+const handleConfirm = (row: any) => emit('confirm', row)
+
+const handleSearch = (onSearch: () => void) => {
+  onSearch()
+}
+// 暴露给父组件调用
+defineExpose(getResizeModelExposeProxy(dialogPickerRef))
+</script>

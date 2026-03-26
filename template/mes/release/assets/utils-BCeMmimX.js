@@ -1,0 +1,1 @@
+function f(e,i=0,o=!1){if(e){typeof e!="number"&&(e=Number(e));const r=Number(e.toFixed(i));if(o===!0)return r;const t=String(r).split(".");return t[0]=t[0].replace(/(\d{1,3})(?=(\d{3})+(?:$|\.))/g,"$1,"),t[1]?t.join("."):t[0]}else return e}export{f as t};

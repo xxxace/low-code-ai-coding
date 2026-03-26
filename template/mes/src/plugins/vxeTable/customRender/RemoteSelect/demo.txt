@@ -1,0 +1,57 @@
+{
+    title: 'cs',
+    field: 'associate1',
+    width: 50,
+    editRender: {
+      name: 'RemoteSelect',
+      attrs: {
+        sql: `SELECT CODE,CNAME FROM BSCODE WHERE BSGP='BLSTFG'`,
+        orderby: 'SORTBY',
+        associated: true,
+        cacheId: '@@associate1',
+        contentKey: 'associate1Name',
+        valueMappings: ['associate1Name:CNAME']
+      }
+    }
+  },
+  {
+    title: 'cs2',
+    field: 'associate2',
+    width: 50,
+    editRender: {
+      name: 'RemoteSelect',
+      attrs: {
+        sql: `SELECT CODE,CNAME FROM BSCODE WHERE BSGP='BLSTFG'`,
+        orderby: 'SORTBY',
+        parentId: 'associate1',
+        associated: true,
+        contentKey: 'associate2Name',
+        valueMappings: ['associate2Name:CNAME'],
+        params: (row) => {
+          return {
+            CODE: row.associate1
+          }
+        }
+      }
+    }
+  },
+  {
+    title: 'cs3',
+    field: 'associate3',
+    width: 50,
+    editRender: {
+      name: 'RemoteSelect',
+      attrs: {
+        sql: `SELECT CODE,CNAME FROM BSCODE WHERE BSGP='BLSTFG'`,
+        orderby: 'SORTBY',
+        parentId: 'associate2',
+        contentKey: 'associate3Name',
+        valueMappings: ['associate3Name:CNAME'],
+        params: (row) => {
+          return {
+            CODE: row.associate2
+          }
+        }
+      }
+    }
+  },
