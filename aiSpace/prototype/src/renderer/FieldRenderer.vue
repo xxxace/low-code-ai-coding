@@ -115,7 +115,7 @@
 
         <!-- 额外说明文本 -->
         <div
-          v-if="decoratorProps.extra && fieldState?.display !== 'none'"
+          v-if="decoratorProps.extra && fieldState?.display !== 'hidden'"
           class="lowcode-field__extra"
         >
           {{ decoratorProps.extra }}
@@ -161,7 +161,7 @@ import {
 
 interface Props {
   schema: FieldSchema
-  formModel: FormModel
+  formModel: FormModel | null
   path: string
 }
 
@@ -181,7 +181,7 @@ const formRendererCtx = inject<{
 // 字段状态（响应式）
 // ============================================================
 
-const fieldState = computed(() => props.formModel.getField(props.path))
+const fieldState = computed(() => props.formModel?.getField(props.path))
 
 // ============================================================
 // 显示相关计算属性
@@ -226,19 +226,19 @@ const isRequired = computed(() => {
 })
 
 const isDisabled = computed(() => {
-  if (props.formModel.disabled.value) return true
+  if (props.formModel?.disabled.value) return true
   return fieldState.value?.pattern === 'disabled'
 })
 
 const isReadOnly = computed(() => {
-  if (props.formModel.readOnly.value) return true
+  if (props.formModel?.readOnly.value) return true
   const pattern = fieldState.value?.pattern
   return pattern === 'readOnly' || pattern === 'readPretty'
 })
 
 /** readPretty：只读展示模式（不渲染 Input，渲染纯文本） */
 const isReadPretty = computed(() => {
-  if (props.formModel.readOnly.value) return false // 全局只读仍用 disabled
+  if (props.formModel?.readOnly.value) return false // 全局只读仍用 disabled
   return fieldState.value?.pattern === 'readPretty'
 })
 
@@ -305,7 +305,7 @@ const fieldValue = computed({
     return val ?? null
   },
   set(newValue: any) {
-    props.formModel.setFieldValue(props.path, newValue)
+    props.formModel?.setFieldValue(props.path, newValue)
     formRendererCtx?.onFieldChange(props.path, newValue)
   },
 })
@@ -355,11 +355,24 @@ const elFormRules = computed(() => {
 <style scoped>
 .lowcode-field {
   width: 100%;
+  min-width: 0;
 }
 
 .lowcode-field-wrapper {
   box-sizing: border-box;
   padding: 0 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.lowcode-field-wrapper :deep(.el-form-item) {
+  width: 100%;
+  min-width: 0;
+}
+
+.lowcode-field-wrapper :deep(.el-form-item__content) {
+  width: 100%;
+  min-width: 0;
 }
 
 .lowcode-field__read-pretty {

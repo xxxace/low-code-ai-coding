@@ -107,7 +107,7 @@ import FlowLayout from './FlowLayout.vue'
 
 interface Props {
   schema: VoidFieldSchema
-  formModel: FormModel
+  formModel: FormModel | null
   fieldKey: string
   /** 父节点的数据路径前缀（虚字段本身不会改变这个路径） */
   pathPrefix: string
@@ -127,9 +127,14 @@ const componentProps = computed(() => props.schema['x-component-props'] ?? {})
 <style scoped>
 .lowcode-void-card :deep(.el-card__body) {
   padding: 12px;
+  min-width: 0;
 }
 
 .lowcode-void-tabs :deep(.el-tabs__content) {
   padding: 16px 0 0;
+}
+
+.lowcode-void-container {
+  min-width: 0;
 }
 </style>

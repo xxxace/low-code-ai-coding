@@ -1,6 +1,6 @@
 <!--
   App.vue - 演示入口
-  
+
   提供两个标签页：
   1. 设计器（LowcodeDesigner）- 完整设计器体验
   2. 渲染器演示（FormRenderer）- 展示联动/校验等运行时能力
@@ -61,12 +61,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { ElMessage } from 'element-plus'
-import LowcodeDesigner from './designer/LowcodeDesigner.vue'
+import LowcodeDesigner from './designer/Designer.vue'
 import FormRenderer from './renderer/FormRenderer.vue'
 import type { PageSchema } from './types/schema'
+import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './types/componentRegistry'
+import { provide } from 'vue'
+
+// ============================================================
+// 提供 ComponentRegistry（全局物料注册表）
+// 在最顶层 provide，确保 LowcodeDesigner 和 FormRenderer 都能注入到
+// ============================================================
+
+const componentRegistry = createDefaultRegistry()
+provide(COMPONENT_REGISTRY_KEY, componentRegistry)
 
 // ============================================================
 // 状态
@@ -158,7 +168,6 @@ const demoSchema: PageSchema = {
         'x-span': 12,
         'x-order': 60,
         'x-id': 'node-ismanager',
-        // 联动示例：是管理层才显示"下属人数"字段
         'x-reactions': [
           {
             target: 'subordinateCount',
@@ -284,7 +293,7 @@ html, body {
 
 .app__content {
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app__content--padded {

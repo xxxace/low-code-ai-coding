@@ -62,8 +62,8 @@ function handleChange() {
     formConfig: {
       ...props.schema.formConfig,
       labelWidth: form.labelWidth,
-      labelPosition: form.labelPosition as any,
-      layoutType: form.layoutType as any,
+      labelPosition: form.labelPosition,
+      layoutType: form.layoutType,
     },
   })
 }

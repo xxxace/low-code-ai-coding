@@ -127,7 +127,8 @@ const emit = defineEmits<{
   (e: 'select-node', id: string): void
   (e: 'remove-node', id: string): void
   (e: 'duplicate-node', id: string): void
-  (e: 'update-node-position', nodeId: string, updates: Partial<FieldSchema>): void
+  (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
+  (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
 }>()
 
 // ============================================================
@@ -277,13 +278,7 @@ function handleMouseMove(e: MouseEvent): void {
     
     // 持久化到 schema
     if (props.selectedNodeId) {
-      emit('update-node-position', props.selectedNodeId, {
-        'x-free-position': {
-          ...selectedNodeSchema.value!['x-free-position'],
-          x: newX,
-          y: newY,
-        }
-      })
+      emit('update-node-position', props.selectedNodeId, { x: newX, y: newY })
     }
   } else if (isResizing.value && resizeDirection.value) {
     // 缩放尺寸
@@ -327,7 +322,7 @@ function handleMouseMove(e: MouseEvent): void {
       const newWidth = Math.max(20, initialWidth.value + deltaX)
       width = newWidth
     }
-    
+
     // 实时更新节点样式
     if (overlayItemRef.value) {
       overlayItemRef.value.style.left = `${x}px`
@@ -335,15 +330,12 @@ function handleMouseMove(e: MouseEvent): void {
       overlayItemRef.value.style.width = `${width}px`
       overlayItemRef.value.style.height = `${height}px`
     }
-    
+
     // 持久化到 schema
     if (props.selectedNodeId) {
-      emit('update-node-position', props.selectedNodeId, {
-        'x-free-position': {
-          ...selectedNodeSchema.value!['x-free-position'],
-          x, y, width, height,
-        }
-      })
+      // 同时更新位置和大小
+      emit('update-node-position', props.selectedNodeId, { x, y })
+      emit('update-node-size', props.selectedNodeId, { width, height })
     }
   }
 }

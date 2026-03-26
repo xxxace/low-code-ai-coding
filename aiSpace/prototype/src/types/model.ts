@@ -121,8 +121,9 @@ export class FormModel {
 
       if (fieldSchema.type === 'void') {
         // 虚字段：不注册数据路径，但递归处理子节点
-        if ((fieldSchema as any).properties) {
-          this._initFromSchema((fieldSchema as any).properties, pathPrefix, address)
+        const voidSchema = fieldSchema as { properties?: Record<string, FieldSchema> }
+        if (voidSchema.properties) {
+          this._initFromSchema(voidSchema.properties, pathPrefix, address)
         }
         continue
       }

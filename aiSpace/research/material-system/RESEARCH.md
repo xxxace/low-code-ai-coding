@@ -41,5 +41,14 @@
 - [x] 研究主题 1：Formily 组件装饰器模式 ✅ 2026-03-26
 - [x] 研究主题 2：VTJ.PRO BlockSchema 物料 ✅ 2026-03-26
 - [x] 研究主题 3：variant-form Widget 注册 ✅ 2026-03-26
-- [ ] 研究主题 4：现有 StdForm 组件适配方案
-- [ ] 输出 SUMMARY.md 汇总文档
+- [x] 研究主题 4：现有 StdForm 组件适配方案 ✅ 2026-03-26
+- [x] 输出 SUMMARY.md 汇总文档 ✅ 2026-03-26
+
+## 研究完成
+
+所有主题已完成研究，输出文档：
+- `01-formily-component.md` (6KB)
+- `02-vtj-block.md` (6.7KB)
+- `03-variant-widget.md` (6.2KB)
+- `04-stdform-adapter.md` (7.6KB)
+- `SUMMARY.md` (6.2KB)

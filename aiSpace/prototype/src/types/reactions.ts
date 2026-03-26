@@ -208,9 +208,9 @@ export class ReactionsEngine {
 
       if (fieldSchema.type === 'void') {
         // 虚字段不注册数据路径，但递归处理子节点
-        const voidProps = (fieldSchema as any).properties
-        if (voidProps) {
-          this._walkSchema(voidProps, pathPrefix)
+        const voidSchema = fieldSchema as { properties?: Record<string, FieldSchema> }
+        if (voidSchema.properties) {
+          this._walkSchema(voidSchema.properties, pathPrefix)
         }
         continue
       }

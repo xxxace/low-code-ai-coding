@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { useComponentRegistry } from '../types/componentRegistry'
+import { useComponentRegistry, type WidgetMeta } from '../types/componentRegistry'
 import type { FieldSchema } from '../types/schema'
 
 // ============================================================
@@ -74,174 +74,6 @@ interface MaterialCategory {
   materials: Material[]
 }
 
-// 内置物料
-const builtinMaterials: Material[] = [
-  // 基础组件
-  {
-    name: 'Input',
-    label: '输入框',
-    category: 'basic',
-    defaultSchema: {
-      type: 'string',
-      title: '输入框',
-      'x-component': 'Input',
-      'x-component-props': { placeholder: '请输入' },
-    },
-  },
-  {
-    name: 'Textarea',
-    label: '文本域',
-    category: 'basic',
-    defaultSchema: {
-      type: 'string',
-      title: '文本域',
-      'x-component': 'Textarea',
-      'x-component-props': { rows: 4 },
-    },
-  },
-  {
-    name: 'InputNumber',
-    label: '数字输入',
-    category: 'basic',
-    defaultSchema: {
-      type: 'number',
-      title: '数字',
-      'x-component': 'InputNumber',
-    },
-  },
-  {
-    name: 'Select',
-    label: '下拉选择',
-    category: 'basic',
-    defaultSchema: {
-      type: 'string',
-      title: '下拉选择',
-      'x-component': 'Select',
-      enum: ['选项1', '选项2', '选项3'],
-    },
-  },
-  {
-    name: 'DatePicker',
-    label: '日期选择',
-    category: 'basic',
-    defaultSchema: {
-      type: 'string',
-      title: '日期',
-      'x-component': 'DatePicker',
-    },
-  },
-  {
-    name: 'Switch',
-    label: '开关',
-    category: 'basic',
-    defaultSchema: {
-      type: 'boolean',
-      title: '开关',
-      'x-component': 'Switch',
-    },
-  },
-
-  // 容器组件
-  {
-    name: 'Card',
-    label: '卡片容器',
-    category: 'container',
-    defaultSchema: {
-      type: 'void',
-      title: '卡片',
-      'x-component': 'Card',
-      'x-component-props': { title: '卡片标题' },
-      properties: {},
-    },
-  },
-  {
-    name: 'Tabs',
-    label: '标签页',
-    category: 'container',
-    defaultSchema: {
-      type: 'void',
-      'x-component': 'Tabs',
-      properties: {
-        tab1: {
-          type: 'void',
-          'x-component': 'TabPane',
-          'x-component-props': { label: '标签1' },
-          properties: {},
-        },
-        tab2: {
-          type: 'void',
-          'x-component': 'TabPane',
-          'x-component-props': { label: '标签2' },
-          properties: {},
-        },
-      },
-    },
-  },
-  {
-    name: 'Collapse',
-    label: '折叠面板',
-    category: 'container',
-    defaultSchema: {
-      type: 'void',
-      'x-component': 'Collapse',
-      properties: {},
-    },
-  },
-  {
-    name: 'Divider',
-    label: '分割线',
-    category: 'container',
-    defaultSchema: {
-      type: 'void',
-      'x-component': 'Divider',
-    },
-  },
-
-  // 业务组件
-  {
-    name: 'RemoteSelect',
-    label: '远程选择',
-    category: 'business',
-    defaultSchema: {
-      type: 'string',
-      title: '远程选择',
-      'x-component': 'RemoteSelect',
-    },
-  },
-  {
-    name: 'DialogPicker',
-    label: '弹窗选择',
-    category: 'business',
-    defaultSchema: {
-      type: 'string',
-      title: '弹窗选择',
-      'x-component': 'DialogPicker',
-    },
-  },
-  {
-    name: 'SubFormTable',
-    label: '子表格',
-    category: 'business',
-    defaultSchema: {
-      type: 'array',
-      title: '子表格',
-      'x-component': 'SubFormTable',
-      'x-relation': {
-        type: 'one-to-many',
-        target: 'sub_table',
-        foreignKey: 'parent_id',
-      },
-    },
-  },
-]
-
-// 分类定义
-const categories: MaterialCategory[] = [
-  { name: 'basic', label: '基础组件', materials: builtinMaterials.filter(m => m.category === 'basic') },
-  { name: 'container', label: '容器组件', materials: builtinMaterials.filter(m => m.category === 'container') },
-  { name: 'business', label: '业务组件', materials: builtinMaterials.filter(m => m.category === 'business') },
-]
-
 // ============================================================
 // 状态
 // ============================================================
@@ -249,23 +81,64 @@ const categories: MaterialCategory[] = [
 const searchKeyword = ref('')
 const activeCategories = ref(['basic', 'container', 'business'])
 
+// 从 ComponentRegistry 获取物料元信息
+const registry = useComponentRegistry()
+
 // ============================================================
 // 计算属性
 // ============================================================
 
+// 从 ComponentRegistry 构建分类列表
 const filteredCategories = computed(() => {
-  if (!searchKeyword.value) return categories
+  const metas = registry.getAllWidgetMetas()
 
-  const keyword = searchKeyword.value.toLowerCase()
-  return categories
-    .map(cat => ({
-      ...cat,
-      materials: cat.materials.filter(
-        m => m.label.toLowerCase().includes(keyword) || m.name.toLowerCase().includes(keyword)
-      ),
+  // 按 category 分组
+  const grouped: Record<string, WidgetMeta[]> = {}
+  for (const meta of metas) {
+    if (searchKeyword.value) {
+      const keyword = searchKeyword.value.toLowerCase()
+      if (!meta.label.toLowerCase().includes(keyword) && !meta.name.toLowerCase().includes(keyword)) {
+        continue
+      }
+    }
+
+    if (!grouped[meta.category]) {
+      grouped[meta.category] = []
+    }
+    grouped[meta.category].push(meta)
+  }
+
+  // 转换为数组格式
+  return Object.entries(grouped)
+    .map(([name, metas]) => ({
+      name,
+      label: getCategoryLabel(name),
+      materials: metas.map(m => ({
+        name: m.name,
+        icon: undefined,
+        label: m.label,
+        category: m.category,
+        defaultSchema: {
+          type: m.defaultSchema.type ?? 'string',
+          title: m.label,
+          'x-component': m.name,
+        } as Partial<FieldSchema>,
+      })),
     }))
     .filter(cat => cat.materials.length > 0)
 })
+
+function getCategoryLabel(name: string): string {
+  const labels: Record<string, string> = {
+    basic: '基础组件',
+    container: '容器组件',
+    select: '选择组件',
+    date: '日期时间',
+    advanced: '高级组件',
+    business: '业务组件',
+  }
+  return labels[name] ?? name
+}
 
 // ============================================================
 // 事件处理

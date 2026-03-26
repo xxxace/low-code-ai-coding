@@ -44,6 +44,7 @@ import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue'
 import type { PageSchema } from '../types/schema'
 import { createFormModel, type FormModel } from '../types/model'
 import { createReactionsEngine, type ReactionsEngine } from '../types/reactions'
+import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
 import FlowLayout from './FlowLayout.vue'
 import FreeLayout from './FreeLayout.vue'
 
@@ -182,7 +183,7 @@ function setFieldValue(path: string, value: any): void {
 defineExpose({ validate, submit, reset, getValues, setFieldValue })
 
 // ============================================================
-// Provide（给子组件注入 formModel）
+// Provide（给子组件注入 formModel 和 ComponentRegistry）
 // ============================================================
 
 provide('formModel', formModel)
@@ -193,14 +194,37 @@ provide('formRenderer', {
   },
 })
 
+// 注入 ComponentRegistry（从父组件获取或创建默认的）
+const componentRegistry = useComponentRegistry()
+provide(COMPONENT_REGISTRY_KEY, componentRegistry)
+
 // ============================================================
 // 生命周期
 // ============================================================
 
+// 初始化表单
 initForm()
+
+// 监听 schema 变化，重新初始化表单（使用 deep: true 确保 properties 变化时也触发）
+watch(
+  () => props.schema,
+  (newSchema, oldSchema) => {
+    // 只在 schema 结构真正变化时重新初始化（避免频繁重建）
+    if (newSchema && (!oldSchema || newSchema.id !== oldSchema.id || JSON.stringify(newSchema.schema.properties) !== JSON.stringify(oldSchema.schema.properties))) {
+      initForm()
+    }
+  },
+  { deep: true, immediate: false }
+)
 
 onMounted(() => {
   execLifeCycleHook('onFormMounted')
+})
+
+onUnmounted(() => {
+  if (reactionsEngine) {
+    reactionsEngine.destroy()
+  }
 })
 
 onUnmounted(() => {
@@ -220,9 +244,11 @@ watch(
 <style scoped>
 .lowcode-renderer {
   width: 100%;
+  min-width: 0;
 }
 
 .lowcode-renderer--free {
   position: relative;
+  overflow: visible;
 }
 </style>

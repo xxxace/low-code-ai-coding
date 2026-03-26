@@ -344,7 +344,8 @@ const handleSubmit = (values: Record<string, any>) => {
       if (fieldSchema['x-id'] === nodeId) return fieldSchema
 
       if ('properties' in fieldSchema && fieldSchema.properties) {
-        const found = _findNodeById(fieldSchema as any, nodeId)
+        const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+        const found = _findNodeById(objFieldSchema, nodeId)
         if (found) return found
       }
     }
@@ -366,7 +367,8 @@ const handleSubmit = (values: Record<string, any>) => {
       }
 
       if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (_removeNodeById(fieldSchema as any, nodeId)) return true
+        const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+        if (_removeNodeById(objFieldSchema, nodeId)) return true
       }
     }
 
@@ -388,7 +390,8 @@ const handleSubmit = (values: Record<string, any>) => {
       }
 
       if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (_updateNodeById(fieldSchema as any, nodeId, updates)) return true
+        const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+        if (_updateNodeById(objFieldSchema, nodeId, updates)) return true
       }
     }
 
@@ -419,7 +422,8 @@ const handleSubmit = (values: Record<string, any>) => {
       }
 
       if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (_duplicateNodeById(fieldSchema as any, nodeId)) return true
+        const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+        if (_duplicateNodeById(objFieldSchema, nodeId)) return true
       }
     }
 
@@ -463,7 +467,8 @@ const handleSubmit = (values: Record<string, any>) => {
 
     for (const [, fieldSchema] of Object.entries(properties)) {
       if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (_sortNodesInSchema(fieldSchema as any, sourceId, targetId, position)) {
+        const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+        if (_sortNodesInSchema(objFieldSchema, sourceId, targetId, position)) {
           return true
         }
       }
@@ -488,7 +493,8 @@ const handleSubmit = (values: Record<string, any>) => {
     if (idx === -1) {
       for (const [, fieldSchema] of Object.entries(properties)) {
         if ('properties' in fieldSchema && fieldSchema.properties) {
-          if (_moveNodeById(fieldSchema as any, nodeId, direction)) return true
+          const objFieldSchema = fieldSchema as ObjectFieldSchema | VoidFieldSchema
+          if (_moveNodeById(objFieldSchema, nodeId, direction)) return true
         }
       }
       return false
@@ -504,6 +510,74 @@ const handleSubmit = (values: Record<string, any>) => {
     entries[swapIdx][1]['x-order'] = currentOrder
 
     return true
+  }
+
+  /**
+   * 更新自由布局节点的位置
+   */
+  function updateNodeFreePosition(
+    nodeId: string,
+    position: { x: number; y: number }
+  ): void {
+    if (!schema.value) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+
+    function updatePosition(properties: Record<string, FieldSchema>): boolean {
+      for (const [, fieldSchema] of Object.entries(properties)) {
+        if (fieldSchema['x-id'] === nodeId) {
+          if (fieldSchema['x-free-position']) {
+            fieldSchema['x-free-position'].x = position.x
+            fieldSchema['x-free-position'].y = position.y
+          }
+          return true
+        }
+        if ('properties' in fieldSchema && fieldSchema.properties) {
+          if (updatePosition(fieldSchema.properties)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    updatePosition(newSchema.schema.properties)
+    schema.value = newSchema
+    saveSnapshot()
+  }
+
+  /**
+   * 更新自由布局节点的大小
+   */
+  function updateNodeFreeSize(
+    nodeId: string,
+    size: { width: number; height: number }
+  ): void {
+    if (!schema.value) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+
+    function updateSize(properties: Record<string, FieldSchema>): boolean {
+      for (const [, fieldSchema] of Object.entries(properties)) {
+        if (fieldSchema['x-id'] === nodeId) {
+          if (fieldSchema['x-free-position']) {
+            fieldSchema['x-free-position'].width = size.width
+            fieldSchema['x-free-position'].height = size.height
+          }
+          return true
+        }
+        if ('properties' in fieldSchema && fieldSchema.properties) {
+          if (updateSize(fieldSchema.properties)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    updateSize(newSchema.schema.properties)
+    schema.value = newSchema
+    saveSnapshot()
   }
 
   // ============================================================
@@ -530,6 +604,8 @@ const handleSubmit = (values: Record<string, any>) => {
     moveNode,
     sortNodes,
     updateNodeProps,
+    updateNodeFreePosition,
+    updateNodeFreeSize,
     selectNode,
     exportSchema,
     generateCode,

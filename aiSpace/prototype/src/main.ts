@@ -4,12 +4,11 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-import { createDefaultRegistry } from './types/componentRegistry'
-import { COMPONENT_REGISTRY_KEY } from './types/componentRegistry'
+import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './types/componentRegistry'
 
 const app = createApp(App)
 
-// 注册 Element Plus
+// 注册 Element Plus（全局注册所有组件）
 app.use(ElementPlus)
 
 // 注册所有 EP 图标

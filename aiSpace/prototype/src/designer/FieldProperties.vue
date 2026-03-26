@@ -176,8 +176,8 @@ function emitUpdate() {
     description: form.description,
     default: form.defaultValue,
     'x-span': form.span,
-    'x-display': form.display as any,
-    'x-pattern': form.pattern as any,
+    'x-display': form.display,
+    'x-pattern': form.pattern,
     'x-reactions': form.reactions,
     'x-component-props': {
       ...(props.schema['x-component-props'] ?? {}),

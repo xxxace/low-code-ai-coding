@@ -72,7 +72,7 @@
                 @dragstart="handleMaterialDragStart($event, item)"
               >
                 <el-icon class="palette-item__icon">
-                  <component :is="item.icon" />
+                  <component :is="iconMap[item.icon]" />
                 </el-icon>
                 <span class="palette-item__label">{{ item.label }}</span>
               </div>
@@ -136,7 +136,7 @@
                 @select-node="engine.selectNode($event)"
                 @remove-node="engine.removeNode($event)"
                 @duplicate-node="handleDuplicateNode($event)"
-                @move-node="handleMoveNode($event[0], $event[1])"
+                @move-node="handleMoveNode"
               />
             </template>
           </div>
@@ -186,7 +186,11 @@
 <script setup lang="ts">
 import { ref, computed, provide, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { RefreshLeft, RefreshRight, Plus } from '@element-plus/icons-vue'
+import {
+  RefreshLeft, RefreshRight, Plus,
+  EditPen, Sort, ArrowDown, Calendar, Switch as SwitchIcon,
+  Document, Tickets, Minus
+} from '@element-plus/icons-vue'
 import type { PageSchema, FieldSchema } from '../types/schema'
 import { useDesignerEngine } from './designerEngine'
 import FormRenderer from '../renderer/FormRenderer.vue'
@@ -248,6 +252,15 @@ const layoutMode = computed({
 })
 
 const generatedCode = computed(() => engine.generateCode())
+
+// ============================================================
+// 图标映射
+// ============================================================
+
+const iconMap: Record<string, any> = {
+  EditPen, Sort, ArrowDown, Calendar, SwitchIcon,
+  Document, Tickets, Minus
+}
 
 // ============================================================
 // 物料定义（简版）
@@ -347,8 +360,10 @@ function handleFieldPropsUpdate(nodeId: string, updates: Partial<FieldSchema>): 
         Object.assign(properties[key], updates)
         return true
       }
-      if (schema.properties && findAndUpdateNode(schema.properties as Record<string, FieldSchema>)) {
-        return true
+      if ('properties' in schema && schema.properties) {
+        if (findAndUpdateNode(schema.properties)) {
+          return true
+        }
       }
     }
     return false
@@ -520,7 +535,7 @@ function handleKeyDown(e: KeyboardEvent): void {
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .canvas-empty {
@@ -535,6 +550,7 @@ function handleKeyDown(e: KeyboardEvent): void {
 .canvas-renderer {
   position: relative;
   min-height: 400px;
+  overflow: visible;
 }
 
 .canvas-renderer__preview {
@@ -547,6 +563,7 @@ function handleKeyDown(e: KeyboardEvent): void {
   border-left: 1px solid #e8e8e8;
   overflow-y: auto;
   flex-shrink: 0;
+  position: relative;
 }
 
 .properties-header {

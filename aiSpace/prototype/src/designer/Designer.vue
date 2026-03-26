@@ -158,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide } from 'vue'
+import { ref, computed, provide, onMounted } from 'vue'
 import { Back, Right, View, Download, Document } from '@element-plus/icons-vue'
 import MaterialPalette from './MaterialPalette.vue'
 import PropertyPanel from './PropertyPanel.vue'
@@ -167,7 +167,9 @@ import FlowLayout from '../renderer/FlowLayout.vue'
 import FormRenderer from '../renderer/FormRenderer.vue'
 import { useDesignerEngine } from './designerEngine'
 import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
+import { createFormModel } from '../types/model'
 import type { FieldSchema, FreePosition, LayoutMode } from '../types/schema'
+import type { PageSchema } from '../types/schema'
 
 // ============================================================
 // 设计器引擎
@@ -200,7 +202,18 @@ const propertiesWidth = ref(320)
 const previewVisible = ref(false)
 const codeVisible = ref(false)
 const generatedCode = ref('')
-const previewFormModel = ref<any>(null)
+
+// 预览用的 FormModel（只在预览对话框中需要）
+// 注意：在设计器模式下，FlowLayout 不需要 formModel
+const previewFormModel = computed(() => {
+  if (!previewVisible.value || !schema.value) return null
+  try {
+    return createFormModel(schema.value)
+  } catch (e) {
+    console.error('[Designer] 创建 previewFormModel 失败:', e)
+    return null
+  }
+})
 
 // 拖拽中的物料
 const draggingMaterial = ref<any>(null)
@@ -323,8 +336,142 @@ const generateCode = () => {
 const componentRegistry = createDefaultRegistry()
 provide(COMPONENT_REGISTRY_KEY, componentRegistry)
 
-// 创建默认空 Schema
-loadSchema(createEmptySchema('新表单'))
+// 创建默认演示 Schema
+const createDemoSchema = (): PageSchema => ({
+  version: '1.0',
+  id: 'demo-form-001',
+  name: '员工信息表单',
+  layoutMode: 'flow',
+  formConfig: {
+    labelWidth: 120,
+    labelPosition: 'right',
+    layoutType: 'PC',
+    columns: 24,
+  },
+  schema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        title: '姓名',
+        'x-component': 'Input',
+        'x-component-props': { placeholder: '请输入姓名' },
+        'x-span': 12,
+        'x-order': 10,
+        'x-id': 'node-name',
+        'x-validator': [
+          { type: 'required', message: '姓名不能为空' },
+          { type: 'maxLength', value: 50, message: '姓名最多50个字符' },
+        ],
+      },
+      gender: {
+        type: 'string',
+        title: '性别',
+        'x-component': 'Select',
+        'x-span': 12,
+        'x-order': 20,
+        'x-id': 'node-gender',
+        enum: ['male', 'female', 'other'],
+        enumNames: ['男', '女', '其他'],
+      },
+      email: {
+        type: 'string',
+        title: '邮箱',
+        'x-component': 'Input',
+        'x-component-props': { placeholder: '请输入邮箱' },
+        'x-span': 12,
+        'x-order': 30,
+        'x-id': 'node-email',
+        'x-validator': [
+          { type: 'email', message: '邮箱格式不正确' },
+        ],
+      },
+      phone: {
+        type: 'string',
+        title: '手机号',
+        'x-component': 'Input',
+        'x-component-props': { placeholder: '请输入手机号' },
+        'x-span': 12,
+        'x-order': 40,
+        'x-id': 'node-phone',
+        'x-validator': [
+          { type: 'phone', message: '手机号格式不正确' },
+        ],
+      },
+      department: {
+        type: 'string',
+        title: '部门',
+        'x-component': 'Select',
+        'x-span': 12,
+        'x-order': 50,
+        'x-id': 'node-dept',
+        enum: ['tech', 'sales', 'hr', 'finance'],
+        enumNames: ['技术部', '销售部', '人事部', '财务部'],
+      },
+      isManager: {
+        type: 'boolean',
+        title: '是否管理层',
+        'x-component': 'Switch',
+        'x-span': 12,
+        'x-order': 60,
+        'x-id': 'node-ismanager',
+        'x-reactions': [
+          {
+            target: 'subordinateCount',
+            fulfill: {
+              state: { visible: true },
+            },
+            otherwise: {
+              state: { visible: false },
+            },
+            when: '$self.value === true',
+          },
+        ],
+      },
+      subordinateCount: {
+        type: 'number',
+        title: '下属人数',
+        'x-component': 'InputNumber',
+        'x-component-props': { min: 0, max: 999 },
+        'x-span': 12,
+        'x-order': 70,
+        'x-id': 'node-subcount',
+        'x-display': 'none',
+      },
+      hireDate: {
+        type: 'string',
+        title: '入职日期',
+        'x-component': 'DatePicker',
+        'x-component-props': {
+          type: 'date',
+          format: 'YYYY-MM-DD',
+          valueFormat: 'YYYY-MM-DD',
+        },
+        'x-span': 12,
+        'x-order': 80,
+        'x-id': 'node-hiredate',
+      },
+      remark: {
+        type: 'string',
+        title: '备注',
+        'x-component': 'Textarea',
+        'x-component-props': { rows: 4, placeholder: '请输入备注信息' },
+        'x-span': 24,
+        'x-order': 90,
+        'x-id': 'node-remark',
+      },
+    },
+  },
+  __meta__: {
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+})
+
+// 组件挂载时加载默认演示 Schema
+onMounted(() => {
+  loadSchema(createDemoSchema())
+})
 </script>
 
 <style scoped>
@@ -375,7 +522,7 @@ loadSchema(createEmptySchema('新表单'))
 
 .designer-canvas {
   flex: 1;
-  overflow: auto;
+  overflow: visible;
   padding: 16px;
 }
 
@@ -384,6 +531,7 @@ loadSchema(createEmptySchema('新表单'))
   background-color: #fff;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: visible;
 }
 
 .canvas-empty {

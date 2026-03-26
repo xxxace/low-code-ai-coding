@@ -154,6 +154,8 @@ const emit = defineEmits<{
   (e: 'remove-node', id: string): void
   (e: 'duplicate-node', id: string): void
   (e: 'move-node', id: string, direction: 'up' | 'down'): void
+  (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
+  (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
 }>()
 
 // ============================================================
@@ -288,23 +290,29 @@ function teardownObservers(): void {
 
 onMounted(async () => {
   await nextTick()
-  setupObservers()
-  refreshOverlay()
+  // 额外延迟一个宏任务，确保 canvas 内 FormRenderer 的 DOM 完全渲染完成
+  setTimeout(() => {
+    setupObservers()
+    refreshOverlay()
+  }, 50)
 })
 
-onUnmounted(() => {
-  teardownObservers()
-})
-
-// Schema 变化时刷新覆盖层
+// 监听 schema 变化，刷新 overlay（只保留一个 watch）
 watch(
   () => props.schema,
   async () => {
     await nextTick()
-    refreshOverlay()
+    // 额外等待一个宏任务，确保 FormRenderer 内的 el-form 渲染完成
+    setTimeout(() => {
+      refreshOverlay()
+    }, 20)
   },
   { deep: true }
 )
+
+onUnmounted(() => {
+  teardownObservers()
+})
 
 // canvasEl 变化时重新设置监听
 watch(
@@ -333,6 +341,45 @@ function handleMouseLeave(): void {
 
 function handleItemClick(nodeId: string): void {
   emit('select-node', nodeId)
+}
+
+// 判断是否为自由布局模式
+const isFreeLayout = computed(() => {
+  return props.schema?.layoutMode === 'free'
+})
+
+// ============================================================
+// 自由布局：拖拽和缩放（基础框架，实际逻辑在 FreeCanvas 中实现）
+// ============================================================
+
+// 拖拽状态
+const draggingNodeId = ref<string | null>(null)
+const resizingNodeId = ref<string | null>(null)
+const resizingDirection = ref<string | null>(null)
+
+function handleItemMouseDown(nodeId: string, e: MouseEvent): void {
+  // 自由布局模式下，拖拽由 FreeCanvas 组件处理
+  // 流式布局模式下，此组件不处理拖拽
+  e.preventDefault()
+}
+
+function handleMouseMove(e: MouseEvent): void {
+  // 自由布局模式下，拖拽由 FreeCanvas 组件处理
+  // 此组件仅用于流式布局模式
+}
+
+function handleMouseUp(e: MouseEvent): void {
+  // 清理拖拽/缩放状态
+  draggingNodeId.value = null
+  resizingNodeId.value = null
+  resizingDirection.value = null
+}
+
+function handleResizeStart(nodeId: string, direction: string, e: MouseEvent): void {
+  // 自由布局模式下，缩放由 FreeCanvas 组件处理
+  // 此组件仅用于流式布局模式
+  e.preventDefault()
+  e.stopPropagation()
 }
 
 // ============================================================
@@ -383,16 +430,17 @@ defineExpose({
 /* 操作按钮区（选中时悬浮在上方） */
 .design-overlay__actions {
   position: absolute;
-  top: -30px;
+  top: -32px;
   right: 0;
   display: flex;
   align-items: center;
   gap: 2px;
   background: #409eff;
   border-radius: 3px 3px 0 0;
-  padding: 3px 6px;
+  padding: 4px 6px;
   white-space: nowrap;
   z-index: 100;
+  transform: translateY(0);
 }
 
 .design-overlay__label {

@@ -44,13 +44,14 @@ import VoidContainer from './VoidContainer.vue'
 
 interface Props {
   properties: Record<string, FieldSchema>
-  formModel: FormModel
+  formModel?: FormModel | null
   pathPrefix: string
   /** 父容器列数（默认 24，全宽） */
   parentColumns?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  formModel: null,
   parentColumns: 24,
 })
 
@@ -95,6 +96,7 @@ function spanStyle(span: number): Record<string, string> {
 <style scoped>
 .lowcode-flow-layout {
   width: 100%;
+  min-width: 0;
   padding: 16px;
 }
 </style>
