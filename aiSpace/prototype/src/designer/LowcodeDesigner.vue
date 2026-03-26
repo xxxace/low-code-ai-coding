@@ -53,32 +53,12 @@
 
     <!-- 主体区域 -->
     <div class="lowcode-designer__main">
-      <!-- 左侧物料面板 -->
+      <!-- 左侧物料面板（使用 MaterialPalette 组件，动态从 ComponentRegistry 读取） -->
       <div class="lowcode-designer__palette">
-        <div class="palette-header">组件库</div>
-        <div class="palette-content">
-          <div
-            v-for="category in materialCategories"
-            :key="category.name"
-            class="palette-category"
-          >
-            <div class="palette-category__title">{{ category.label }}</div>
-            <div class="palette-category__items">
-              <div
-                v-for="item in category.items"
-                :key="item.name"
-                class="palette-item"
-                draggable="true"
-                @dragstart="handleMaterialDragStart($event, item)"
-              >
-                <el-icon class="palette-item__icon">
-                  <component :is="iconMap[item.icon]" />
-                </el-icon>
-                <span class="palette-item__label">{{ item.label }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <MaterialPalette
+          @drag-start="handleMaterialDragStartFromPalette"
+          @material-click="handleMaterialClick"
+        />
       </div>
 
       <!-- 中间画布 -->
@@ -188,18 +168,17 @@ import { ref, computed, provide, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   RefreshLeft, RefreshRight, Plus,
-  EditPen, Sort, ArrowDown, Calendar, Switch as SwitchIcon,
-  Document, Tickets, Minus
 } from '@element-plus/icons-vue'
 import type { PageSchema, FieldSchema } from '../types/schema'
 import { useDesignerEngine } from './designerEngine'
 import FormRenderer from '../renderer/FormRenderer.vue'
 
-// 这些组件的详细实现省略，在实际开发中需要补充
+import MaterialPalette from './MaterialPalette.vue'
 import DesignOverlay from './DesignOverlay.vue'
 import FreeCanvas from './FreeCanvas.vue'
 import PageProperties from './PageProperties.vue'
 import FieldProperties from './FieldProperties.vue'
+import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
 
 // ============================================================
 // Props & Emits
@@ -223,6 +202,10 @@ const engine = useDesignerEngine()
 
 // Provide 给子组件使用
 provide('designerEngine', engine)
+
+// 提供 ComponentRegistry（给 MaterialPalette / FormRenderer / FieldRenderer 使用）
+const componentRegistry = createDefaultRegistry()
+provide(COMPONENT_REGISTRY_KEY, componentRegistry)
 
 // ============================================================
 // 状态
@@ -254,40 +237,29 @@ const layoutMode = computed({
 const generatedCode = computed(() => engine.generateCode())
 
 // ============================================================
-// 图标映射
+// 图标映射（保留供其他地方使用）
 // ============================================================
 
-const iconMap: Record<string, any> = {
-  EditPen, Sort, ArrowDown, Calendar, SwitchIcon,
-  Document, Tickets, Minus
+// ============================================================
+// 物料定义（由 MaterialPalette 组件从 ComponentRegistry 动态读取，不再硬编码）
+// ============================================================
+
+// draggingMaterial 统一从 MaterialPalette 的 drag-start 事件设置
+function handleMaterialDragStartFromPalette(material: any, _event: DragEvent): void {
+  draggingMaterial.value = material
 }
 
-// ============================================================
-// 物料定义（简版）
-// ============================================================
-
-const materialCategories = [
-  {
-    name: 'basic',
-    label: '基础组件',
-    items: [
-      { name: 'Input', label: '输入框', icon: 'EditPen', defaultSchema: { type: 'string', 'x-component': 'Input' } },
-      { name: 'InputNumber', label: '数字输入', icon: 'Sort', defaultSchema: { type: 'number', 'x-component': 'InputNumber' } },
-      { name: 'Select', label: '下拉选择', icon: 'ArrowDown', defaultSchema: { type: 'string', 'x-component': 'Select' } },
-      { name: 'DatePicker', label: '日期选择', icon: 'Calendar', defaultSchema: { type: 'string', 'x-component': 'DatePicker' } },
-      { name: 'Switch', label: '开关', icon: 'Switch', defaultSchema: { type: 'boolean', 'x-component': 'Switch' } },
-    ],
-  },
-  {
-    name: 'container',
-    label: '容器组件',
-    items: [
-      { name: 'Card', label: '卡片', icon: 'Document', defaultSchema: { type: 'void', 'x-component': 'Card', properties: {} } },
-      { name: 'Tabs', label: '标签页', icon: 'Tickets', defaultSchema: { type: 'void', 'x-component': 'Tabs', properties: {} } },
-      { name: 'Divider', label: '分割线', icon: 'Minus', defaultSchema: { type: 'void', 'x-component': 'Divider' } },
-    ],
-  },
-]
+function handleMaterialClick(material: any): void {
+  // 点击物料时直接添加到画布末尾
+  const fieldKey = `field_${Date.now()}`
+  const fieldSchema: FieldSchema = {
+    ...(material.defaultSchema ?? {}),
+    title: material.label,
+    'x-id': engine.generateNodeId(),
+    'x-span': 12,
+  }
+  engine.addNode('', fieldKey, fieldSchema)
+}
 
 // ============================================================
 // 生命周期
@@ -303,19 +275,19 @@ if (props.initialSchema) {
 // 事件处理
 // ============================================================
 
-function handleMaterialDragStart(e: DragEvent, material: any): void {
-  draggingMaterial.value = material
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copy'
-    e.dataTransfer.setData('text/plain', material.name)
-  }
-}
-
 function handleCanvasDrop(e: DragEvent): void {
   e.preventDefault()
-  if (!draggingMaterial.value) return
 
-  const material = draggingMaterial.value
+  // 尝试从 dataTransfer 读取（MaterialPalette 设置了 'material' key）
+  let material = draggingMaterial.value
+  if (!material && e.dataTransfer) {
+    const raw = e.dataTransfer.getData('material')
+    if (raw) {
+      try { material = JSON.parse(raw) } catch { /* ignore */ }
+    }
+  }
+  if (!material) return
+
   const fieldKey = `field_${Date.now()}`
 
   // 根据当前布局模式补充不同的定位信息
@@ -331,8 +303,8 @@ function handleCanvasDrop(e: DragEvent): void {
   }
 
   const fieldSchema: FieldSchema = {
-    ...material.defaultSchema,
-    title: material.label,
+    ...(material.defaultSchema ?? {}),
+    title: material.label ?? material.name,
     'x-id': engine.generateNodeId(),
     'x-span': isFreelayout ? 24 : 12,
     ...(freePosition ? { 'x-free-position': freePosition } : {}),
@@ -461,64 +433,13 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 .lowcode-designer__palette {
-  width: 220px;
+  width: 200px;
   background: #fff;
   border-right: 1px solid #e8e8e8;
   overflow-y: auto;
   flex-shrink: 0;
-}
-
-.palette-header {
-  padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #606266;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.palette-category__title {
-  padding: 8px 16px 4px;
-  font-size: 11px;
-  color: #909399;
-  text-transform: uppercase;
-}
-
-.palette-category__items {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 4px 8px;
-  gap: 4px;
-}
-
-.palette-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 80px;
-  padding: 8px 4px;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  cursor: grab;
-  background: #fafafa;
-  font-size: 11px;
-  color: #606266;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.palette-item:hover {
-  border-color: #409eff;
-  color: #409eff;
-  background: #ecf5ff;
-}
-
-.palette-item:active {
-  cursor: grabbing;
-}
-
-.palette-item__icon {
-  font-size: 20px;
-  margin-bottom: 4px;
 }
 
 .lowcode-designer__canvas {
@@ -535,7 +456,7 @@ function handleKeyDown(e: KeyboardEvent): void {
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   position: relative;
-  overflow: visible;
+  overflow: auto;
 }
 
 .canvas-empty {
@@ -555,6 +476,8 @@ function handleKeyDown(e: KeyboardEvent): void {
 
 .canvas-renderer__preview {
   pointer-events: none;
+  min-width: 600px;
+  width: 100%;
 }
 
 .lowcode-designer__properties {

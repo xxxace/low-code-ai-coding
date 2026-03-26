@@ -64,7 +64,7 @@
 import { ref, reactive, watch } from 'vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { ElMessage } from 'element-plus'
-import LowcodeDesigner from './designer/Designer.vue'
+import LowcodeDesigner from './designer/LowcodeDesigner.vue'
 import FormRenderer from './renderer/FormRenderer.vue'
 import type { PageSchema } from './types/schema'
 import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './types/componentRegistry'

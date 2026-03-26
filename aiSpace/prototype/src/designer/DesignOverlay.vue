@@ -216,8 +216,10 @@ const flatNodes = computed<FlatNode[]>(() => {
 
 function refreshOverlay(): void {
   if (!props.canvasEl) return
+  // 优先使用 overlayRef 的父容器作为坐标参考（更精准）
+  const referenceEl = overlayRef.value?.parentElement ?? props.canvasEl
 
-  const canvasRect = props.canvasEl.getBoundingClientRect()
+  const canvasRect = referenceEl.getBoundingClientRect()
   const items: OverlayItem[] = []
 
   for (const node of flatNodes.value) {
@@ -229,9 +231,11 @@ function refreshOverlay(): void {
 
     const elRect = el.getBoundingClientRect()
 
-    // 计算相对于画布的坐标（考虑画布滚动）
-    const relLeft = elRect.left - canvasRect.left + props.canvasEl.scrollLeft
-    const relTop = elRect.top - canvasRect.top + props.canvasEl.scrollTop
+    // 计算相对于 overlay 父容器的坐标（考虑滚动）
+    const scrollTop = referenceEl.scrollTop ?? 0
+    const scrollLeft = referenceEl.scrollLeft ?? 0
+    const relLeft = elRect.left - canvasRect.left + scrollLeft
+    const relTop = elRect.top - canvasRect.top + scrollTop
 
     items.push({
       nodeId: node.id,
@@ -396,7 +400,7 @@ defineExpose({
   position: absolute;
   inset: 0;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .design-overlay__item {

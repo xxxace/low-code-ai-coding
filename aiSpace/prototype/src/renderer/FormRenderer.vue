@@ -222,23 +222,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (reactionsEngine) {
-    reactionsEngine.destroy()
-  }
-})
-
-onUnmounted(() => {
   reactionsEngine?.destroy()
   execLifeCycleHook('onFormUnmounted')
 })
-
-// Schema 变化时重新初始化（支持动态 Schema）
-watch(
-  () => props.schema.id,
-  () => {
-    initForm()
-  }
-)
 </script>
 
 <style scoped>
