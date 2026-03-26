@@ -6,7 +6,6 @@
   其子字段的数据路径会"穿透"虚字段，直接挂在父节点下（借鉴 Formily VoidField）。
 -->
 <template>
-  <!-- Card 容器 -->
   <el-card
     v-if="componentName === 'Card'"
     v-bind="componentProps"
@@ -21,6 +20,7 @@
       :properties="schema.properties"
       :form-model="formModel"
       :path-prefix="pathPrefix"
+      :columns="props.columns ?? 1"
     />
   </el-card>
 
@@ -42,6 +42,7 @@
           :properties="paneSchema.properties"
           :form-model="formModel"
           :path-prefix="pathPrefix"
+          :columns="props.columns ?? 1"
         />
       </el-tab-pane>
     </template>
@@ -65,6 +66,7 @@
           :properties="itemSchema.properties"
           :form-model="formModel"
           :path-prefix="pathPrefix"
+          :columns="props.columns ?? 1"
         />
       </el-collapse-item>
     </template>
@@ -91,6 +93,7 @@
       :properties="schema.properties"
       :form-model="formModel"
       :path-prefix="pathPrefix"
+      :columns="props.columns ?? 1"
     />
   </div>
 </template>
@@ -111,6 +114,8 @@ interface Props {
   fieldKey: string
   /** 父节点的数据路径前缀（虚字段本身不会改变这个路径） */
   pathPrefix: string
+  /** 布局列数，透传给子 FlowLayout */
+  columns?: number
 }
 
 const props = defineProps<Props>()

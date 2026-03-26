@@ -125,6 +125,7 @@
                 @remove-node="engine.removeNode($event)"
                 @duplicate-node="handleDuplicateNode($event)"
                 @move-node="handleMoveNode"
+                @reorder-nodes="handleReorderNodes"
               />
             </template>
           </div>
@@ -273,7 +274,7 @@ function handleMaterialClick(material: any): void {
     ...(material.defaultSchema ?? {}),
     title: material.label,
     "x-id": engine.generateNodeId(),
-    "x-span": 12,
+    "x-span": 1,
   };
   engine.addNode("", fieldKey, fieldSchema);
 }
@@ -327,7 +328,7 @@ function handleCanvasDrop(e: DragEvent): void {
     ...(material.defaultSchema ?? {}),
     title: material.label ?? material.name,
     "x-id": engine.generateNodeId(),
-    "x-span": isFreelayout ? 24 : 12,
+    "x-span": isFreelayout ? 24 : 1,
     ...(freePosition ? { "x-free-position": freePosition } : {}),
   };
 
@@ -376,6 +377,40 @@ function handleDuplicateNode(nodeId: string): void {
 
 function handleMoveNode(nodeId: string, direction: "up" | "down"): void {
   engine.moveNode(nodeId, direction);
+}
+
+function handleReorderNodes(fromId: string, toId: string): void {
+  if (!engine.schema.value) return
+  const newSchema = JSON.parse(JSON.stringify(engine.schema.value))
+  const props = newSchema.schema.properties
+
+  // 找到 fromNode 和 toNode 的 x-order，交换
+  let fromOrder: number | undefined
+  let toOrder: number | undefined
+
+  function findOrders(properties: Record<string, any>): void {
+    for (const [, schema] of Object.entries(properties)) {
+      if (schema['x-id'] === fromId) fromOrder = schema['x-order'] ?? 0
+      if (schema['x-id'] === toId) toOrder = schema['x-order'] ?? 0
+      if (schema.properties) findOrders(schema.properties)
+    }
+  }
+
+  findOrders(props)
+  if (fromOrder === undefined || toOrder === undefined) return
+
+  // 交换两个节点的 x-order
+  function swapOrders(properties: Record<string, any>): void {
+    for (const [, schema] of Object.entries(properties)) {
+      if (schema['x-id'] === fromId) schema['x-order'] = toOrder
+      if (schema['x-id'] === toId) schema['x-order'] = fromOrder
+      if (schema.properties) swapOrders(schema.properties)
+    }
+  }
+
+  swapOrders(props)
+  engine.schema.value = newSchema
+  engine.saveSnapshot()
 }
 
 function handleUpdateNodePosition(

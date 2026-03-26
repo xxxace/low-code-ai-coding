@@ -25,8 +25,9 @@
         <el-form-item label="默认值">
           <el-input v-model="form.defaultValue" @change="emitUpdate" />
         </el-form-item>
-        <el-form-item label="列宽（1-24）">
+        <el-form-item label="占列数">
           <el-input-number v-model="form.span" :min="1" :max="24" @change="emitUpdate" />
+          <div class="prop-hint">占布局列数中的几列（与页面「布局列数」配合）</div>
         </el-form-item>
       </el-form>
     </div>
@@ -134,7 +135,7 @@ const form = reactive({
   description: props.schema.description ?? '',
   placeholder: props.schema['x-component-props']?.placeholder ?? '',
   defaultValue: props.schema.default ?? '',
-  span: props.schema['x-span'] ?? 12,
+  span: props.schema['x-span'] ?? 1,
   display: props.schema['x-display'] ?? 'visible',
   pattern: props.schema['x-pattern'] ?? 'editable',
   required: false,
@@ -233,6 +234,13 @@ function updateReactionDeps(idx: number, value: string) {
   color: #409eff;
   padding: 8px 0 4px;
   letter-spacing: 0.5px;
+}
+
+.prop-hint {
+  font-size: 10px;
+  color: #909399;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 .reaction-item {

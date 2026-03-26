@@ -28,6 +28,7 @@
         :properties="schema.schema.properties"
         :form-model="formModel"
         :path-prefix="''"
+        :columns="formConfig.columns ?? 1"
       />
 
       <!-- 自由布局 -->

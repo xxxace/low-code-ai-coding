@@ -1,6 +1,6 @@
 <!-- 
   PageProperties.vue
-  页面级属性编辑面板（简版）
+  页面级属性编辑面板
 -->
 <template>
   <div class="page-properties">
@@ -13,10 +13,21 @@
       </el-form-item>
       <el-form-item label="标签位置">
         <el-select v-model="form.labelPosition" @change="handleChange">
+          <el-option label="顶部" value="top" />
           <el-option label="右对齐" value="right" />
           <el-option label="左对齐" value="left" />
-          <el-option label="顶部" value="top" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="布局列数">
+        <div class="columns-presets">
+          <el-radio-group v-model="form.columns" size="small" @change="handleChange">
+            <el-radio-button :value="1">1列</el-radio-button>
+            <el-radio-button :value="2">2列</el-radio-button>
+            <el-radio-button :value="3">3列</el-radio-button>
+            <el-radio-button :value="4">4列</el-radio-button>
+          </el-radio-group>
+        </div>
+        <div class="columns-hint">字段宽度 = 占 x-span 列 / {{ form.columns }} 列</div>
       </el-form-item>
       <el-form-item label="布局类型">
         <el-select v-model="form.layoutType" @change="handleChange">
@@ -26,6 +37,17 @@
         </el-select>
       </el-form-item>
     </el-form>
+
+    <!-- 快速操作提示 -->
+    <div class="page-tips">
+      <div class="page-tips__title">快速操作</div>
+      <div class="page-tips__list">
+        <div class="page-tips__item">点击字段 → 右侧面板调整 x-span（占列数）</div>
+        <div class="page-tips__item">拖拽字段可排序</div>
+        <div class="page-tips__item">Delete 键删除选中字段</div>
+        <div class="page-tips__item">Ctrl+Z / Ctrl+Y 撤销重做</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -44,16 +66,18 @@ const emit = defineEmits<{
 
 const form = reactive({
   name: props.schema.name,
-  labelWidth: props.schema.formConfig.labelWidth ?? 120,
-  labelPosition: props.schema.formConfig.labelPosition ?? 'right',
+  labelWidth: props.schema.formConfig.labelWidth ?? 100,
+  labelPosition: props.schema.formConfig.labelPosition ?? 'top',
   layoutType: props.schema.formConfig.layoutType ?? 'PC',
+  columns: props.schema.formConfig.columns ?? 1,
 })
 
 watch(() => props.schema, (schema) => {
   form.name = schema.name
-  form.labelWidth = schema.formConfig.labelWidth ?? 120
-  form.labelPosition = schema.formConfig.labelPosition ?? 'right'
+  form.labelWidth = schema.formConfig.labelWidth ?? 100
+  form.labelPosition = schema.formConfig.labelPosition ?? 'top'
   form.layoutType = schema.formConfig.layoutType ?? 'PC'
+  form.columns = schema.formConfig.columns ?? 1
 }, { deep: true })
 
 function handleChange() {
@@ -64,7 +88,58 @@ function handleChange() {
       labelWidth: form.labelWidth,
       labelPosition: form.labelPosition,
       layoutType: form.layoutType,
+      columns: form.columns,
     },
   })
 }
 </script>
+
+<style scoped>
+.page-properties {
+  padding-bottom: 16px;
+}
+
+.columns-presets {
+  margin-bottom: 4px;
+}
+
+.columns-hint {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+.page-tips {
+  margin-top: 16px;
+  padding: 10px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+}
+
+.page-tips__title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #0369a1;
+  margin-bottom: 6px;
+}
+
+.page-tips__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.page-tips__item {
+  font-size: 11px;
+  color: #0369a1;
+  padding-left: 8px;
+  position: relative;
+}
+
+.page-tips__item::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+}
+</style>

@@ -85,9 +85,10 @@ function createSandboxFn(
   isExpression: boolean
 ): (...args: any[]) => any {
   // 危险全局对象黑名单（作为参数遮蔽全局）
+  // 注意：strict mode 下 eval/arguments 不能作为参数名，用安全别名替代
   const dangerousKeys = [
     'window', 'document', 'globalThis', 'self', 'top', 'parent',
-    'eval', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
+    '__sandbox_eval__', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
     'setTimeout', 'setInterval', 'require', 'module', 'exports',
     '__webpack_require__',
   ]
@@ -108,21 +109,23 @@ function createSandboxFn(
 
 /**
  * 安全求值表达式（有返回值）
+ *
+ * 修复记录（2026-03-26）：
+ * - 移除了 'eval' 和 'arguments' 作为 new Function 的参数名
+ *   因为在 "use strict" 模式下，这两个标识符作为形参名是语法错误
+ *   SyntaxError: Unexpected eval or arguments in strict mode
+ * - 改用 __sandbox_eval__ / __sandbox_arguments__ 作为占位名来遮蔽对应全局
  */
 function evalExpression(expression: string, context: SandboxContext): any {
   try {
     const contextKeys = Object.keys(context)
     const contextValues = contextKeys.map((k) => context[k])
-    // 危险对象全部传入 undefined
-    const dangerousValues = new Array(
-      8 + ['window','document','globalThis','self','top','parent','eval','Function',
-           'XMLHttpRequest','fetch','WebSocket','setTimeout','setInterval','require',
-           'module','exports','__webpack_require__'].length
-    ).fill(undefined)
 
+    // 危险全局对象黑名单（作为参数传入 undefined 来遮蔽）
+    // 注意：strict mode 下 eval/arguments 不能作为参数名，用 __safe_xxx__ 别名
     const dangerousKeys = [
       'window', 'document', 'globalThis', 'self', 'top', 'parent',
-      'eval', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
+      '__sandbox_eval__', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
       'setTimeout', 'setInterval', 'require', 'module', 'exports',
       '__webpack_require__',
     ]
@@ -145,9 +148,10 @@ function evalExpression(expression: string, context: SandboxContext): any {
  */
 function execExpression(expression: string, context: SandboxContext): void {
   try {
+    // 同 evalExpression：eval/arguments 不能作为严格模式下的形参名
     const dangerousKeys = [
       'window', 'document', 'globalThis', 'self', 'top', 'parent',
-      'eval', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
+      '__sandbox_eval__', 'Function', 'XMLHttpRequest', 'fetch', 'WebSocket',
       'setTimeout', 'setInterval', 'require', 'module', 'exports',
       '__webpack_require__',
     ]

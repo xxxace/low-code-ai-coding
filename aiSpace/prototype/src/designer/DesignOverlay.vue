@@ -29,11 +29,18 @@
           'design-overlay__item--hovered': item.nodeId === hoveredNodeId && item.nodeId !== selectedNodeId,
           'design-overlay__item--container': item.isContainer,
           'design-overlay__item--draggable': isFreeLayout && item.nodeId === selectedNodeId,
+          'design-overlay__item--drag-over': dragOverNodeId === item.nodeId && dragNodeId !== item.nodeId,
         }"
         :style="item.style"
+        :draggable="!isFreeLayout"
         @mouseenter.stop="handleItemHover(item.nodeId)"
         @click.stop="handleItemClick(item.nodeId)"
         @mousedown.stop="handleItemMouseDown(item.nodeId, $event)"
+        @dragstart.stop="handleDragStart(item.nodeId, $event)"
+        @dragend.stop="handleDragEnd"
+        @dragover.prevent.stop="handleDragOver(item.nodeId, $event)"
+        @dragleave.stop="handleDragLeave(item.nodeId)"
+        @drop.stop="handleDrop(item.nodeId)"
       >
         <!-- 自由布局：8个缩放手柄（仅选中时显示） -->
         <template v-if="isFreeLayout && item.nodeId === selectedNodeId">
@@ -55,14 +62,17 @@
           <div class="resize-handle resize-handle--se" @mousedown.stop="handleResizeStart(item.nodeId, 'se', $event)"></div>
         </template>
 
-        <!-- 操作按钮（选中时显示） -->
-        <div v-if="item.nodeId === selectedNodeId" class="design-overlay__actions">
+        <!-- 操作按钮（选中时显示）—— 四向边界感知，始终显示在画布内 -->
+        <div
+          v-if="item.nodeId === selectedNodeId"
+          class="design-overlay__actions"
+          :style="getActionsStyle(item)"
+        >
           <!-- 节点类型标签 -->
           <span class="design-overlay__label">{{ item.label }}</span>
 
           <!-- 流式布局：上移下移按钮 -->
           <template v-if="!isFreeLayout">
-            <!-- 上移 -->
             <el-tooltip content="上移" placement="top" :show-after="500">
               <button
                 class="design-overlay__action-btn"
@@ -72,7 +82,6 @@
               </button>
             </el-tooltip>
 
-            <!-- 下移 -->
             <el-tooltip content="下移" placement="top" :show-after="500">
               <button
                 class="design-overlay__action-btn"
@@ -156,7 +165,74 @@ const emit = defineEmits<{
   (e: 'move-node', id: string, direction: 'up' | 'down'): void
   (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
   (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
+  (e: 'reorder-nodes', fromId: string, toId: string): void
 }>()
+
+// ============================================================
+// 操作栏四向边界感知
+// ============================================================
+
+/**
+ * 计算操作栏的 position style，使其始终在画布可见区域内
+ *
+ * 策略：
+ * - 默认贴字段顶边上方（top: -32px）
+ * - 顶部不足时贴字段底边下方
+ * - 水平方向：默认右对齐（right: 0），若右侧空间不足则改左对齐（left: 0）
+ *   若字段太靠左导致操作栏溢出左侧，则用 left: 0 保证不超出画布左边
+ */
+function getActionsStyle(item: OverlayItem): CSSProperties {
+  // 操作栏估算宽度（字段名 + 4个按钮）
+  const ACTIONS_W = 160
+  const ACTIONS_H = 30
+
+  const canvasW = props.canvasEl?.offsetWidth ?? 0
+  const canvasH = props.canvasEl?.offsetHeight ?? 0
+
+  const itemLeft = parseFloat(item.style.left as string) || 0
+  const itemTop = parseFloat(item.style.top as string) || 0
+  const itemW = parseFloat(item.style.width as string) || 0
+
+  // ---- 垂直方向 ----
+  // 字段顶部到画布顶部不足 ACTIONS_H，则放到下方
+  const showBelow = itemTop < ACTIONS_H
+  const verticalStyle: CSSProperties = showBelow
+    ? { top: '100%', bottom: 'auto', marginTop: '2px', marginBottom: '0' }
+    : { bottom: '100%', top: 'auto', marginBottom: '2px', marginTop: '0' }
+
+  // ---- 水平方向 ----
+  // 字段右边缘在画布内，优先右对齐（right: 0 相对字段右侧）
+  // 但如果字段自身宽度不够 ACTIONS_W（字段太窄或太靠左），
+  // 就检查字段左边缘 + ACTIONS_W 是否超出画布右边缘
+  const rightEdge = itemLeft + itemW
+  let horizontalStyle: CSSProperties
+
+  if (itemLeft < 0) {
+    // 字段左边超出画布左侧（极端情况），贴左边
+    horizontalStyle = { left: '0', right: 'auto' }
+  } else if (rightEdge < ACTIONS_W) {
+    // 字段太靠左，如果右对齐操作栏会溢出左侧，改左对齐
+    horizontalStyle = { left: '0', right: 'auto' }
+  } else if (canvasW > 0 && rightEdge > canvasW) {
+    // 字段超出画布右侧，贴右边
+    horizontalStyle = { right: '0', left: 'auto' }
+  } else {
+    // 正常情况：操作栏右对齐字段右边缘
+    // 检查左溢出：字段右边缘 - ACTIONS_W < 0，说明会溢出左侧
+    if (rightEdge - ACTIONS_W < 0) {
+      horizontalStyle = { left: '0', right: 'auto' }
+    } else {
+      horizontalStyle = { right: '0', left: 'auto' }
+    }
+  }
+
+  return {
+    position: 'absolute',
+    ...verticalStyle,
+    ...horizontalStyle,
+    zIndex: 1000,
+  }
+}
 
 // ============================================================
 // 状态
@@ -379,6 +455,54 @@ function handleMouseUp(e: MouseEvent): void {
   resizingDirection.value = null
 }
 
+// ============================================================
+// 流式布局：拖拽排序（HTML5 DnD）
+// ============================================================
+
+const dragNodeId = ref<string | null>(null)
+const dragOverNodeId = ref<string | null>(null)
+
+function handleDragStart(nodeId: string, e: DragEvent): void {
+  if (isFreeLayout.value) return
+  dragNodeId.value = nodeId
+  emit('select-node', nodeId)
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', nodeId)
+  }
+}
+
+function handleDragEnd(): void {
+  dragNodeId.value = null
+  dragOverNodeId.value = null
+}
+
+function handleDragOver(nodeId: string, e: DragEvent): void {
+  if (isFreeLayout.value) return
+  if (nodeId === dragNodeId.value) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverNodeId.value = nodeId
+}
+
+function handleDragLeave(nodeId: string): void {
+  if (dragOverNodeId.value === nodeId) {
+    dragOverNodeId.value = null
+  }
+}
+
+function handleDrop(toNodeId: string): void {
+  if (isFreeLayout.value) return
+  if (!dragNodeId.value || dragNodeId.value === toNodeId) {
+    dragNodeId.value = null
+    dragOverNodeId.value = null
+    return
+  }
+  emit('reorder-nodes', dragNodeId.value, toNodeId)
+  dragNodeId.value = null
+  dragOverNodeId.value = null
+}
+
 function handleResizeStart(nodeId: string, direction: string, e: MouseEvent): void {
   // 自由布局模式下，缩放由 FreeCanvas 组件处理
   // 此组件仅用于流式布局模式
@@ -431,20 +555,23 @@ defineExpose({
   background: rgba(103, 194, 58, 0.04);
 }
 
-/* 操作按钮区（选中时悬浮在上方） */
+/* 拖拽排序：drop 目标高亮 */
+.design-overlay__item--drag-over {
+  border: 2px dashed #f59e0b !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+/* 操作按钮区 —— 位置完全由 JS getActionsStyle() 动态控制 */
 .design-overlay__actions {
-  position: absolute;
-  top: -32px;
-  right: 0;
   display: flex;
   align-items: center;
   gap: 2px;
   background: #409eff;
-  border-radius: 3px 3px 0 0;
-  padding: 4px 6px;
+  border-radius: 3px;
+  padding: 3px 6px;
   white-space: nowrap;
-  z-index: 100;
-  transform: translateY(0);
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
 .design-overlay__label {

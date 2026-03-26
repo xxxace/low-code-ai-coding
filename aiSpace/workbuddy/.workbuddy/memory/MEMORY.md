@@ -62,6 +62,23 @@ TypeScript 类型检查：零错误
 - ✅ 创建优化报告：生成《奥卡姆剃刀清理报告.md》包含5项优化建议
 - 关键发现：工作空间结构良好，主要文件为 template/mes/ 中的示例代码
 
+## 第八阶段（2026-03-26）：交互增强与 Bug 修复
+
+- ✅ DesignOverlay：操作栏边界自适应（靠近顶部时显示在字段下方）
+- ✅ DesignOverlay：操作栏新增快速列宽按钮（6/8/12/16/24），点击直接更新 x-span
+- ✅ DesignOverlay：HTML5 DnD 拖拽排序，拖拽字段交换 x-order，drag-over 黄色指示
+- ✅ PageProperties：布局列数快速选择（不限/2列/3列/4列），快速操作提示面板
+- ✅ reactions.ts：沙箱修复 —— `eval` 不能作为 strict mode 形参名，改为 `__sandbox_eval__`，修复 `when: '$self.value === true'` 的 SyntaxError
+
+## 第九阶段（2026-03-26）：布局重构 + 操作栏四向边界
+
+- ✅ FlowLayout 重构：`display:grid 24列` → `display:flex flex-wrap`；字段宽度 = `(x-span / columns) * 100%`
+- ✅ x-span 语义变更：原来表示 grid 列数（1-24），现在表示「占 columns 总列数中的几列」（默认1）
+- ✅ FormRenderer：传 `:columns="formConfig.columns ?? 1"` 给 FlowLayout（修复修改列数无反应的Bug）
+- ✅ PageProperties：布局列数改为 1/2/3/4（直接列数）
+- ✅ DesignOverlay：`getActionsStyle()` 函数统一四向边界检测，操作栏始终在画布内可见
+- ✅ 奥卡姆剃刀：移除操作栏快速列宽按钮（非必要功能）
+
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
 - 编写单元测试（ReactionsEngine、FormModel）
