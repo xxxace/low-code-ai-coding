@@ -18,7 +18,9 @@
     <!-- 顶部工具栏 -->
     <div class="lowcode-designer__toolbar">
       <div class="toolbar-left">
-        <span class="text-sm font-medium text-gray-700">{{ currentSchema?.name ?? '未命名表单' }}</span>
+        <span class="text-sm font-medium text-gray-700">{{
+          currentSchema?.name ?? "未命名表单"
+        }}</span>
       </div>
 
       <div class="toolbar-center flex items-center gap-2">
@@ -32,10 +34,18 @@
       <div class="toolbar-right flex items-center gap-2">
         <!-- 撤销/重做 -->
         <el-button-group size="small">
-          <el-button :disabled="!engine.canUndo.value" @click="engine.undo()" title="撤销 (Ctrl+Z)">
+          <el-button
+            :disabled="!engine.canUndo.value"
+            @click="engine.undo()"
+            title="撤销 (Ctrl+Z)"
+          >
             <el-icon><RefreshLeft /></el-icon>
           </el-button>
-          <el-button :disabled="!engine.canRedo.value" @click="engine.redo()" title="重做 (Ctrl+Y)">
+          <el-button
+            :disabled="!engine.canRedo.value"
+            @click="engine.redo()"
+            title="重做 (Ctrl+Y)"
+          >
             <el-icon><RefreshRight /></el-icon>
           </el-button>
         </el-button-group>
@@ -44,10 +54,14 @@
         <el-button size="small" @click="showPreview = true">预览</el-button>
 
         <!-- 导出 Schema -->
-        <el-button size="small" type="primary" @click="handleExport">导出 Schema</el-button>
+        <el-button size="small" type="primary" @click="handleExport"
+          >导出 Schema</el-button
+        >
 
         <!-- 生成代码 -->
-        <el-button size="small" @click="showCodeDialog = true">生成代码</el-button>
+        <el-button size="small" @click="showCodeDialog = true"
+          >生成代码</el-button
+        >
       </div>
     </div>
 
@@ -74,19 +88,13 @@
           @click.self="engine.selectNode(null)"
         >
           <!-- 空状态提示 -->
-          <div
-            v-if="isSchemaEmpty"
-            class="canvas-empty"
-          >
+          <div v-if="isSchemaEmpty" class="canvas-empty">
             <el-icon class="text-4xl text-gray-300"><Plus /></el-icon>
             <p class="text-gray-400 mt-2">拖拽左侧组件到此处</p>
           </div>
 
           <!-- Renderer 预览（设计模式下禁用交互） -->
-          <div
-            v-else-if="currentSchema"
-            class="canvas-renderer"
-          >
+          <div v-else-if="currentSchema" class="canvas-renderer">
             <!-- 实际 Renderer（pointer-events: none 防止交互） -->
             <FormRenderer
               :schema="currentSchema"
@@ -126,7 +134,7 @@
       <!-- 右侧属性面板 -->
       <div class="lowcode-designer__properties">
         <div class="properties-header">
-          {{ engine.selectedNodeSchema.value ? '字段属性' : '页面属性' }}
+          {{ engine.selectedNodeSchema.value ? "字段属性" : "页面属性" }}
         </div>
         <div class="properties-content">
           <!-- 页面级属性 -->
@@ -148,7 +156,12 @@
     </div>
 
     <!-- 预览弹窗 -->
-    <el-dialog v-model="showPreview" title="表单预览" width="800px" destroy-on-close>
+    <el-dialog
+      v-model="showPreview"
+      title="表单预览"
+      width="800px"
+      destroy-on-close
+    >
       <FormRenderer v-if="currentSchema" :schema="currentSchema" />
     </el-dialog>
 
@@ -164,77 +177,78 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import {
-  RefreshLeft, RefreshRight, Plus,
-} from '@element-plus/icons-vue'
-import type { PageSchema, FieldSchema } from '../types/schema'
-import { useDesignerEngine } from './designerEngine'
-import FormRenderer from '../renderer/FormRenderer.vue'
+import { ref, computed, provide, watch } from "vue";
+import { ElMessage } from "element-plus";
+import { RefreshLeft, RefreshRight, Plus } from "@element-plus/icons-vue";
+import type { PageSchema, FieldSchema } from "../types/schema";
+import { useDesignerEngine } from "./designerEngine";
+import FormRenderer from "../renderer/FormRenderer.vue";
 
-import MaterialPalette from './MaterialPalette.vue'
-import DesignOverlay from './DesignOverlay.vue'
-import FreeCanvas from './FreeCanvas.vue'
-import PageProperties from './PageProperties.vue'
-import FieldProperties from './FieldProperties.vue'
-import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
+import MaterialPalette from "./MaterialPalette.vue";
+import DesignOverlay from "./DesignOverlay.vue";
+import FreeCanvas from "./FreeCanvas.vue";
+import PageProperties from "./PageProperties.vue";
+import FieldProperties from "./FieldProperties.vue";
+import {
+  createDefaultRegistry,
+  COMPONENT_REGISTRY_KEY,
+} from "../types/componentRegistry";
 
 // ============================================================
 // Props & Emits
 // ============================================================
 
 interface Props {
-  initialSchema?: PageSchema
+  initialSchema?: PageSchema;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'export', schema: PageSchema): void
-}>()
+  (e: "export", schema: PageSchema): void;
+}>();
 
 // ============================================================
 // 设计器引擎
 // ============================================================
 
-const engine = useDesignerEngine()
+const engine = useDesignerEngine();
 
 // Provide 给子组件使用
-provide('designerEngine', engine)
+provide("designerEngine", engine);
 
 // 提供 ComponentRegistry（给 MaterialPalette / FormRenderer / FieldRenderer 使用）
-const componentRegistry = createDefaultRegistry()
-provide(COMPONENT_REGISTRY_KEY, componentRegistry)
+const componentRegistry = createDefaultRegistry();
+provide(COMPONENT_REGISTRY_KEY, componentRegistry);
 
 // ============================================================
 // 状态
 // ============================================================
 
-const canvasRef = ref<HTMLElement | null>(null)
-const showPreview = ref(false)
-const showCodeDialog = ref(false)
-const draggingMaterial = ref<any | null>(null)
+const canvasRef = ref<HTMLElement | null>(null);
+const showPreview = ref(false);
+const showCodeDialog = ref(false);
+const draggingMaterial = ref<any | null>(null);
 
-const currentSchema = computed(() => engine.schema.value)
+const currentSchema = computed(() => engine.schema.value);
 
 const isSchemaEmpty = computed(() => {
-  if (!currentSchema.value) return true
-  return Object.keys(currentSchema.value.schema.properties).length === 0
-})
+  if (!currentSchema.value) return true;
+  return Object.keys(currentSchema.value.schema.properties).length === 0;
+});
 
 const layoutMode = computed({
-  get: () => currentSchema.value?.layoutMode ?? 'flow',
+  get: () => currentSchema.value?.layoutMode ?? "flow",
   set: (mode) => {
-    if (!engine.schema.value) return
+    if (!engine.schema.value) return;
     // 直接修改 schema 的 layoutMode（非字段节点属性，不通过 updateNodeProps）
-    const newSchema = JSON.parse(JSON.stringify(engine.schema.value))
-    newSchema.layoutMode = mode
-    engine.loadSchema(newSchema)
+    const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
+    newSchema.layoutMode = mode;
+    engine.loadSchema(newSchema);
   },
-})
+});
 
-const generatedCode = computed(() => engine.generateCode())
+const generatedCode = computed(() => engine.generateCode());
 
 // ============================================================
 // 图标映射（保留供其他地方使用）
@@ -245,20 +259,23 @@ const generatedCode = computed(() => engine.generateCode())
 // ============================================================
 
 // draggingMaterial 统一从 MaterialPalette 的 drag-start 事件设置
-function handleMaterialDragStartFromPalette(material: any, _event: DragEvent): void {
-  draggingMaterial.value = material
+function handleMaterialDragStartFromPalette(
+  material: any,
+  _event: DragEvent,
+): void {
+  draggingMaterial.value = material;
 }
 
 function handleMaterialClick(material: any): void {
   // 点击物料时直接添加到画布末尾
-  const fieldKey = `field_${Date.now()}`
+  const fieldKey = `field_${Date.now()}`;
   const fieldSchema: FieldSchema = {
     ...(material.defaultSchema ?? {}),
     title: material.label,
-    'x-id': engine.generateNodeId(),
-    'x-span': 12,
-  }
-  engine.addNode('', fieldKey, fieldSchema)
+    "x-id": engine.generateNodeId(),
+    "x-span": 12,
+  };
+  engine.addNode("", fieldKey, fieldSchema);
 }
 
 // ============================================================
@@ -266,9 +283,9 @@ function handleMaterialClick(material: any): void {
 // ============================================================
 
 if (props.initialSchema) {
-  engine.loadSchema(props.initialSchema)
+  engine.loadSchema(props.initialSchema);
 } else {
-  engine.loadSchema(engine.createEmptySchema())
+  engine.loadSchema(engine.createEmptySchema());
 }
 
 // ============================================================
@@ -276,110 +293,125 @@ if (props.initialSchema) {
 // ============================================================
 
 function handleCanvasDrop(e: DragEvent): void {
-  e.preventDefault()
+  e.preventDefault();
 
   // 尝试从 dataTransfer 读取（MaterialPalette 设置了 'material' key）
-  let material = draggingMaterial.value
+  let material = draggingMaterial.value;
   if (!material && e.dataTransfer) {
-    const raw = e.dataTransfer.getData('material')
+    const raw = e.dataTransfer.getData("material");
     if (raw) {
-      try { material = JSON.parse(raw) } catch { /* ignore */ }
+      try {
+        material = JSON.parse(raw);
+      } catch {
+        /* ignore */
+      }
     }
   }
-  if (!material) return
+  if (!material) return;
 
-  const fieldKey = `field_${Date.now()}`
+  const fieldKey = `field_${Date.now()}`;
 
   // 根据当前布局模式补充不同的定位信息
-  const isFreelayout = layoutMode.value === 'free'
+  const isFreelayout = layoutMode.value === "free";
 
   // 计算 free 布局的初始落点坐标（相对于 canvas-container）
-  let freePosition: Record<string, any> | undefined
+  let freePosition: Record<string, any> | undefined;
   if (isFreelayout && canvasRef.value) {
-    const rect = canvasRef.value.getBoundingClientRect()
-    const x = Math.max(0, e.clientX - rect.left - 60)
-    const y = Math.max(0, e.clientY - rect.top - 16)
-    freePosition = { x, y, width: 200, height: 40, zIndex: 1 }
+    const rect = canvasRef.value.getBoundingClientRect();
+    const x = Math.max(0, e.clientX - rect.left - 60);
+    const y = Math.max(0, e.clientY - rect.top - 16);
+    freePosition = { x, y, width: 200, height: 40, zIndex: 1 };
   }
 
   const fieldSchema: FieldSchema = {
     ...(material.defaultSchema ?? {}),
     title: material.label ?? material.name,
-    'x-id': engine.generateNodeId(),
-    'x-span': isFreelayout ? 24 : 12,
-    ...(freePosition ? { 'x-free-position': freePosition } : {}),
-  }
+    "x-id": engine.generateNodeId(),
+    "x-span": isFreelayout ? 24 : 12,
+    ...(freePosition ? { "x-free-position": freePosition } : {}),
+  };
 
-  engine.addNode('', fieldKey, fieldSchema)
-  draggingMaterial.value = null
+  engine.addNode("", fieldKey, fieldSchema);
+  draggingMaterial.value = null;
 }
 
 function handlePagePropsUpdate(updates: Partial<PageSchema>): void {
-  if (!engine.schema.value) return
-  const newSchema = JSON.parse(JSON.stringify(engine.schema.value))
-  Object.assign(newSchema, updates)
-  engine.schema.value = newSchema
-  engine.saveSnapshot()
+  if (!engine.schema.value) return;
+  const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
+  Object.assign(newSchema, updates);
+  engine.schema.value = newSchema;
+  engine.saveSnapshot();
 }
 
-function handleFieldPropsUpdate(nodeId: string, updates: Partial<FieldSchema>): void {
-  if (!engine.schema.value) return
-  const newSchema = JSON.parse(JSON.stringify(engine.schema.value))
-  
+function handleFieldPropsUpdate(
+  nodeId: string,
+  updates: Partial<FieldSchema>,
+): void {
+  if (!engine.schema.value) return;
+  const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
+
   function findAndUpdateNode(properties: Record<string, FieldSchema>): boolean {
     for (const [key, schema] of Object.entries(properties)) {
-      if (schema['x-id'] === nodeId) {
-        Object.assign(properties[key], updates)
-        return true
+      if (schema["x-id"] === nodeId) {
+        Object.assign(properties[key], updates);
+        return true;
       }
-      if ('properties' in schema && schema.properties) {
+      if ("properties" in schema && schema.properties) {
         if (findAndUpdateNode(schema.properties)) {
-          return true
+          return true;
         }
       }
     }
-    return false
+    return false;
   }
-  
-  findAndUpdateNode(newSchema.schema.properties)
-  engine.schema.value = newSchema
-  engine.saveSnapshot()
+
+  findAndUpdateNode(newSchema.schema.properties);
+  engine.schema.value = newSchema;
+  engine.saveSnapshot();
 }
 
 function handleDuplicateNode(nodeId: string): void {
-  engine.duplicateNode(nodeId)
+  engine.duplicateNode(nodeId);
 }
 
-function handleMoveNode(nodeId: string, direction: 'up' | 'down'): void {
-  engine.moveNode(nodeId, direction)
+function handleMoveNode(nodeId: string, direction: "up" | "down"): void {
+  engine.moveNode(nodeId, direction);
 }
 
-function handleUpdateNodePosition(nodeId: string, updates: { x: number; y: number }): void {
-  engine.updateNodeFreePosition(nodeId, updates)
+function handleUpdateNodePosition(
+  nodeId: string,
+  updates: { x: number; y: number },
+): void {
+  engine.updateNodeFreePosition(nodeId, updates);
 }
 
-function handleUpdateNodeSize(nodeId: string, updates: { width: number; height: number }): void {
-  engine.updateNodeFreeSize(nodeId, updates)
+function handleUpdateNodeSize(
+  nodeId: string,
+  updates: { width: number; height: number },
+): void {
+  engine.updateNodeFreeSize(nodeId, updates);
 }
 
 function handleExport(): void {
-  const schema = engine.exportSchema()
+  const schema = engine.exportSchema();
   if (schema) {
-    emit('export', schema)
+    emit("export", schema);
     // 也可以下载为文件
-    const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${schema.name}.schema.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    const blob = new Blob([JSON.stringify(schema, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${schema.name}.schema.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
 
 function copyCode(): void {
-  navigator.clipboard.writeText(generatedCode.value)
-  ElMessage.success('代码已复制到剪贴板')
+  navigator.clipboard.writeText(generatedCode.value);
+  ElMessage.success("代码已复制到剪贴板");
 }
 
 // ============================================================
@@ -387,21 +419,21 @@ function copyCode(): void {
 // ============================================================
 
 function handleKeyDown(e: KeyboardEvent): void {
-  const isCtrl = e.ctrlKey || e.metaKey
+  const isCtrl = e.ctrlKey || e.metaKey;
 
-  if (isCtrl && e.key === 'z') {
-    e.preventDefault()
-    engine.undo()
-  } else if (isCtrl && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
-    e.preventDefault()
-    engine.redo()
-  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+  if (isCtrl && e.key === "z") {
+    e.preventDefault();
+    engine.undo();
+  } else if (isCtrl && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
+    e.preventDefault();
+    engine.redo();
+  } else if (e.key === "Delete" || e.key === "Backspace") {
     if (engine.selectedNodeId.value) {
-      e.preventDefault()
-      engine.removeNode(engine.selectedNodeId.value)
+      e.preventDefault();
+      engine.removeNode(engine.selectedNodeId.value);
     }
-  } else if (e.key === 'Escape') {
-    engine.selectNode(null)
+  } else if (e.key === "Escape") {
+    engine.selectNode(null);
   }
 }
 </script>
@@ -410,7 +442,7 @@ function handleKeyDown(e: KeyboardEvent): void {
 .lowcode-designer {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: #f0f2f5;
   outline: none;
 }
@@ -448,6 +480,7 @@ function handleKeyDown(e: KeyboardEvent): void {
   padding: 16px;
   background: #f0f2f5;
   min-height: 0;
+  min-width: 0;
 }
 
 .canvas-container {
@@ -456,7 +489,7 @@ function handleKeyDown(e: KeyboardEvent): void {
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   position: relative;
-  overflow: auto;
+  overflow: visible;
 }
 
 .canvas-empty {
@@ -470,14 +503,13 @@ function handleKeyDown(e: KeyboardEvent): void {
 
 .canvas-renderer {
   position: relative;
-  min-height: 400px;
-  overflow: visible;
+  width: 100%;
 }
 
 .canvas-renderer__preview {
   pointer-events: none;
-  min-width: 600px;
   width: 100%;
+  display: block;
 }
 
 .lowcode-designer__properties {

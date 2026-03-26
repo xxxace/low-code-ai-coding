@@ -73,7 +73,9 @@ const sortedProperties = computed(() => {
 const gridStyle = computed(() => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${props.parentColumns}, 1fr)`,
-  gap: '16px 16px',
+  columnGap: '0',
+  rowGap: '0',
+  alignItems: 'start',
 }))
 
 // ============================================================
@@ -97,6 +99,7 @@ function spanStyle(span: number): Record<string, string> {
 .lowcode-flow-layout {
   width: 100%;
   min-width: 0;
-  padding: 16px;
+  padding: 8px 8px 0;
+  box-sizing: border-box;
 }
 </style>

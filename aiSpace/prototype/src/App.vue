@@ -96,8 +96,8 @@ const demoSchema: PageSchema = {
   name: '员工信息表单',
   layoutMode: 'flow',
   formConfig: {
-    labelWidth: 120,
-    labelPosition: 'right',
+    labelWidth: 100,
+    labelPosition: 'top',
     layoutType: 'PC',
     columns: 24,
   },

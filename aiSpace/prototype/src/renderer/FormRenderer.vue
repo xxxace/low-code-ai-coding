@@ -17,9 +17,10 @@
       ref="elFormRef"
       :model="formModel.values"
       :label-width="formConfig.labelWidth ? `${formConfig.labelWidth}px` : 'auto'"
-      :label-position="formConfig.labelPosition ?? 'right'"
+      :label-position="formConfig.labelPosition ?? 'top'"
       :size="formConfig.size ?? 'default'"
       :disabled="formModel.disabled.value"
+      style="width: 100%"
     >
       <!-- 流式布局 -->
       <FlowLayout
@@ -231,6 +232,12 @@ onUnmounted(() => {
 .lowcode-renderer {
   width: 100%;
   min-width: 0;
+  display: block;
+}
+
+.lowcode-renderer :deep(.el-form) {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .lowcode-renderer--free {

@@ -360,7 +360,7 @@ const elFormRules = computed(() => {
 
 .lowcode-field-wrapper {
   box-sizing: border-box;
-  padding: 0 8px;
+  padding: 0 6px;
   min-width: 0;
   width: 100%;
 }
@@ -368,11 +368,20 @@ const elFormRules = computed(() => {
 .lowcode-field-wrapper :deep(.el-form-item) {
   width: 100%;
   min-width: 0;
+  margin-bottom: 18px;
 }
 
 .lowcode-field-wrapper :deep(.el-form-item__content) {
   width: 100%;
   min-width: 0;
+}
+
+.lowcode-field-wrapper :deep(.el-input),
+.lowcode-field-wrapper :deep(.el-input-number),
+.lowcode-field-wrapper :deep(.el-select),
+.lowcode-field-wrapper :deep(.el-date-editor),
+.lowcode-field-wrapper :deep(.el-textarea) {
+  width: 100% !important;
 }
 
 .lowcode-field__read-pretty {
