@@ -153,7 +153,10 @@ const initialHeight = ref(0)
 
 const selectedNodeSchema = computed<FieldSchema | null>(() => {
   if (!props.selectedNodeId) return null
-  return findNodeSchemaById(props.selectedNodeId)
+  const node = findNodeSchemaById(props.selectedNodeId)
+  // 只处理 Free 布局节点（x-position-type === 'absolute'）
+  if (!node || node['x-position-type'] !== 'absolute') return null
+  return node
 })
 
 function findNodeSchemaById(nodeId: string): FieldSchema | null {
@@ -171,11 +174,12 @@ function findNodeSchemaById(nodeId: string): FieldSchema | null {
 }
 
 const itemStyle = computed(() => {
-  if (!selectedNodeSchema.value?.['x-position']) {
+  // 只处理 x-position（Free 布局节点）
+  const pos = selectedNodeSchema.value?.['x-position']
+  if (!pos) {
     return { display: 'none' }
   }
 
-  const pos = selectedNodeSchema.value['x-position']
   return {
     position: 'absolute',
     left: `${pos.x ?? 0}px`,

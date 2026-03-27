@@ -6,6 +6,10 @@
  * - 管理从 MaterialPalette 拖拽组件到画布的完整流程
  * - 处理拖拽开始（记录拖拽的物料）、放置（计算坐标 + 创建节点）
  * - 处理点击物料直接插入
+ *
+ * layoutMode 对新增节点的影响：
+ * - 'flow': x-position-type=relative, x-span=1
+ * - 'free': x-position-type=absolute, x-position={x,y,width,height}
  */
 
 import { ref } from 'vue'
@@ -26,15 +30,28 @@ export function useMaterialDrag(engine: DesignerEngine) {
 
   /**
    * 点击物料直接添加到画布末尾
+   * @param material 物料元信息
+   * @param isFreelayout 是否为自由布局模式（layoutMode === 'free'）
    */
-  function handleMaterialClick(material: any): void {
+  function handleMaterialClick(material: any, isFreelayout: boolean): void {
     const fieldKey = `field_${Date.now()}`
     const fieldSchema: FieldSchema = {
       ...(material.defaultSchema ?? {}),
       title: material.label,
       'x-id': engine.generateNodeId(),
-      'x-span': 1,
     }
+
+    // 根据布局模式设置不同的定位属性
+    if (isFreelayout) {
+      // Free 模式：绝对定位
+      fieldSchema['x-position-type'] = 'absolute'
+      fieldSchema['x-position'] = { x: 20, y: 20, width: 200, height: 40, zIndex: 1 }
+    } else {
+      // Flow 模式：流式布局
+      fieldSchema['x-position-type'] = 'relative'
+      fieldSchema['x-span'] = 1
+    }
+
     engine.addNode('', fieldKey, fieldSchema)
   }
 
@@ -63,21 +80,24 @@ export function useMaterialDrag(engine: DesignerEngine) {
     if (!material) return
 
     const fieldKey = `field_${Date.now()}`
-
-    let freePosition: Record<string, any> | undefined
-    if (isFreelayout && canvasRef) {
-      const rect = canvasRef.getBoundingClientRect()
-      const x = Math.max(0, e.clientX - rect.left - 60)
-      const y = Math.max(0, e.clientY - rect.top - 16)
-      freePosition = { x, y, width: 200, height: 40, zIndex: 1 }
-    }
-
     const fieldSchema: FieldSchema = {
       ...(material.defaultSchema ?? {}),
       title: material.label ?? material.name,
       'x-id': engine.generateNodeId(),
-      'x-span': isFreelayout ? 24 : 1,
-      ...(freePosition ? { 'x-free-position': freePosition } : {}),
+    }
+
+    // 根据布局模式设置不同的定位属性
+    if (isFreelayout && canvasRef) {
+      // Free 模式：绝对定位，根据鼠标位置计算
+      const rect = canvasRef.getBoundingClientRect()
+      const x = Math.max(0, e.clientX - rect.left - 60)
+      const y = Math.max(0, e.clientY - rect.top - 16)
+      fieldSchema['x-position-type'] = 'absolute'
+      fieldSchema['x-position'] = { x, y, width: 200, height: 40, zIndex: 1 }
+    } else {
+      // Flow 模式：流式布局
+      fieldSchema['x-position-type'] = 'relative'
+      fieldSchema['x-span'] = 1
     }
 
     engine.addNode('', fieldKey, fieldSchema)

@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, type CSSProperties } from 'vue'
+import { computed, inject, provide, type CSSProperties } from 'vue'
 import type { FieldSchema } from '../core/schema'
 import type { FormModel } from '../core/model'
 import FieldRenderer from './FieldRenderer.vue'
@@ -85,6 +85,12 @@ const props = withDefaults(defineProps<Props>(), {
 // ============================================================
 
 const designerEngine: any = inject('designerEngine', null)
+
+// ============================================================
+// 向子组件注入选中节点 ID（用于 Flow 节点高亮）
+// ============================================================
+
+provide('selectedNodeId', computed(() => designerEngine?.selectedNodeId?.value ?? null))
 
 // ============================================================
 // 计算属性

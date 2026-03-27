@@ -68,7 +68,7 @@
       <div class="lowcode-designer__palette">
         <MaterialPalette
           @drag-start="handleMaterialDragStartFromPalette"
-          @material-click="handleMaterialClick"
+          @material-click="(m) => handleMaterialClick(m, layoutMode === 'free')"
         />
       </div>
 
@@ -97,21 +97,21 @@
               :design-mode="true"
               class="canvas-renderer__preview"
             />
-
-            <!-- Absolute 节点交互层（Step 3: XLayout 架构） -->
-            <AbsoluteNodeOverlay
-              v-if="currentSchema"
-              :schema="currentSchema"
-              :selected-node-id="engine.selectedNodeId.value"
-              @select-node="engine.selectNode"
-              @remove-node="handleRemoveNode"
-              @duplicate-node="handleDuplicateNode"
-              @update-node-position="handleUpdateNodePosition"
-              @update-node-size="handleUpdateNodeSize"
-              @save-snapshot="engine.saveNodePositionSnapshot"
-            />
           </div>
         </div>
+
+        <!-- Absolute 节点交互层（放在 canvas-container 外面，不受 pointer-events: none 影响） -->
+        <AbsoluteNodeOverlay
+          v-if="currentSchema"
+          :schema="currentSchema"
+          :selected-node-id="engine.selectedNodeId.value"
+          @select-node="engine.selectNode"
+          @remove-node="handleRemoveNode"
+          @duplicate-node="handleDuplicateNode"
+          @update-node-position="handleUpdateNodePosition"
+          @update-node-size="handleUpdateNodeSize"
+          @save-snapshot="engine.saveNodePositionSnapshot"
+        />
       </div>
 
       <!-- 右侧属性面板 -->
@@ -532,6 +532,7 @@ function generateSchemaId(): string {
   padding: 16px;
   background: #f0f2f5;
   min-height: 0;
+  position: relative; /* 让 AbsoluteNodeOverlay 有正确的定位上下文 */
   min-width: 0;
 }
 
@@ -559,9 +560,20 @@ function generateSchemaId(): string {
 }
 
 .canvas-renderer__preview {
-  pointer-events: none;
   width: 100%;
   display: block;
+}
+
+/* designMode 下禁止表单交互（通过 CSS 选择器） */
+.canvas-renderer__preview :deep(.el-input__wrapper),
+.canvas-renderer__preview :deep(.el-textarea__inner),
+.canvas-renderer__preview :deep(.el-select__wrapper),
+.canvas-renderer__preview :deep(.el-input-number),
+.canvas-renderer__preview :deep(.el-date-editor),
+.canvas-renderer__preview :deep(.el-checkbox__input),
+.canvas-renderer__preview :deep(.el-radio__input) {
+  pointer-events: none;
+  cursor: default;
 }
 
 .lowcode-designer__properties {

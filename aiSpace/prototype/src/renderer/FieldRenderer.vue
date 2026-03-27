@@ -38,7 +38,11 @@
       v-show="designMode || fieldState?.display !== 'hidden'"
       class="lowcode-field-wrapper"
       :style="nodeStyle"
-      :class="[fieldWrapperClass, designMode && fieldState?.display === 'hidden' ? 'lowcode-field-wrapper--design-hidden' : '']"
+      :class="[
+        fieldWrapperClass,
+        designMode && fieldState?.display === 'hidden' ? 'lowcode-field-wrapper--design-hidden' : '',
+        designMode && isSelected ? 'lowcode-field-wrapper--selected' : ''
+      ]"
       :data-field-path="path"
       :data-field-id="schema['x-id']"
       @click="handleWrapperClick"
@@ -212,6 +216,14 @@ const designMode = inject<boolean>('designMode', false)
 
 /** 设计器引擎（用于触发节点选中） */
 const designerEngine = inject<any>('designerEngine', null)
+
+/** 当前选中的节点 ID（由 XLayout 注入） */
+const selectedNodeId = inject<{ value: string | null }>('selectedNodeId', { value: null })
+
+/** 节点是否被选中 */
+const isSelected = computed(() => {
+  return designMode && props.schema['x-id'] === selectedNodeId?.value
+})
 
 /** 节点点击事件（设计器模式） */
 function handleWrapperClick(): void {
@@ -447,6 +459,13 @@ const elFormRules = computed<FormItemRule[]>(() => {
   opacity: 0.4;
   outline: 1px dashed #faad14;
   outline-offset: -1px;
+}
+
+/** 设计模式下，选中节点的蓝色边框高亮 */
+.lowcode-field-wrapper--selected {
+  outline: 2px solid #409eff;
+  outline-offset: -2px;
+  background: rgba(64, 158, 255, 0.05);
 }
 
 .lowcode-field__extra {

@@ -88,6 +88,28 @@
 - **父元素约束**：absolute 节点拖拽只改坐标，禁止切换父容器（CSS 天然语义）
 - **第三方组件**：VoidContainer 根元素即为 containing block，slot 容器不影响
 
+### 交互架构重构（2026-03-27）
+
+**Flow 布局节点**（x-position-type: relative）：
+- 在 XLayout/FlowLayout 内部直接交互
+- 选中高亮：FieldRenderer/VoidContainer 注入 selectedNodeId，添加蓝色边框
+- 属性面板可调整定位类型
+
+**Free 布局节点**（x-position-type: absolute）：
+- AbsoluteNodeOverlay 特殊处理
+- 选中：蓝色边框 + 操作按钮
+- 拖拽移动 x/y 坐标
+- 8 向缩放 width/height
+
+**layoutMode**：
+- 只影响新增节点的默认类型
+- 'flow' → x-position-type: relative, x-span: 1
+- 'free' → x-position-type: absolute, x-position: {x,y,width,height}
+
+**属性面板新增**：
+- 定位类型选择器（流式布局 / 自由定位）
+- Free 模式下显示位置 X/Y、宽度、高度输入框
+
 ### 关键文件
 - `renderer/XLayout.vue`（新建，统一渲染层）
 - `renderer/VoidContainer.vue`（改造，容器建立定位上下文）

@@ -14,7 +14,7 @@
     v-if="componentName === 'Card'"
     v-bind="componentProps"
     class="lowcode-void-card mb-4"
-    :class="schema['x-class']"
+    :class="[schema['x-class'], selectedClass]"
     :data-field-id="schema['x-id']"
     :style="mergedStyle"
     @click="handleClick"
@@ -36,7 +36,7 @@
     v-else-if="componentName === 'Tabs'"
     v-bind="componentProps"
     class="lowcode-void-tabs"
-    :class="schema['x-class']"
+    :class="[schema['x-class'], selectedClass]"
     :data-field-id="schema['x-id']"
     :style="mergedStyle"
     @click="handleClick"
@@ -63,7 +63,7 @@
     v-else-if="componentName === 'Collapse'"
     v-bind="componentProps"
     class="lowcode-void-collapse mb-4"
-    :class="schema['x-class']"
+    :class="[schema['x-class'], selectedClass]"
     :data-field-id="schema['x-id']"
     :style="mergedStyle"
     @click="handleClick"
@@ -89,7 +89,7 @@
   <el-divider
     v-else-if="componentName === 'Divider'"
     v-bind="componentProps"
-    :class="schema['x-class']"
+    :class="[schema['x-class'], selectedClass]"
     :data-field-id="schema['x-id']"
     :style="schema['x-style']"
     @click="handleClick"
@@ -101,7 +101,7 @@
   <div
     v-else
     class="lowcode-void-container"
-    :class="schema['x-class']"
+    :class="[schema['x-class'], selectedClass]"
     :style="mergedStyle"
     :data-field-id="schema['x-id']"
     @click="handleClick"
@@ -154,6 +154,17 @@ const props = withDefaults(defineProps<Props>(), {
 
 const designerEngine: any = inject('designerEngine', null)
 
+/** 当前选中的节点 ID（由 XLayout 注入） */
+const selectedNodeId = inject<{ value: string | null }>('selectedNodeId', { value: null })
+
+/** 节点是否被选中 */
+const isSelected = computed(() => {
+  return props.schema['x-id'] === selectedNodeId?.value
+})
+
+/** 选中高亮类名 */
+const selectedClass = computed(() => isSelected.value ? 'void-container--selected' : '')
+
 // ============================================================
 // 计算属性
 // ============================================================
@@ -200,5 +211,12 @@ function handleClick(): void {
 
 .lowcode-void-container {
   min-width: 0;
+}
+
+/** 设计模式下，选中容器的蓝色边框高亮 */
+.void-container--selected {
+  outline: 2px solid #409eff;
+  outline-offset: 2px;
+  background: rgba(64, 158, 255, 0.05);
 }
 </style>

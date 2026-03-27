@@ -74,6 +74,67 @@
       </el-form>
     </PropGroup>
 
+    <!-- 布局设置（定位类型） -->
+    <PropGroup title="布局设置">
+      <el-form label-width="72px" label-position="left" size="small">
+        <el-form-item label="定位类型">
+          <el-select
+            v-model="form.positionType"
+            @change="handlePositionTypeChange"
+            style="width: 100%"
+          >
+            <el-option label="流式布局" value="relative" />
+            <el-option label="自由定位" value="absolute" />
+          </el-select>
+          <div class="prop-hint">流式：正常排列 | 自由：绝对定位，可拖拽移动</div>
+        </el-form-item>
+
+        <!-- 自由定位时显示位置和尺寸设置 -->
+        <template v-if="form.positionType === 'absolute'">
+          <el-form-item label="位置 X">
+            <el-input-number
+              v-model="form.positionX"
+              :min="0"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+              @change="emitUpdate"
+            />
+          </el-form-item>
+          <el-form-item label="位置 Y">
+            <el-input-number
+              v-model="form.positionY"
+              :min="0"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+              @change="emitUpdate"
+            />
+          </el-form-item>
+          <el-form-item label="宽度">
+            <el-input-number
+              v-model="form.positionWidth"
+              :min="50"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+              @change="emitUpdate"
+            />
+          </el-form-item>
+          <el-form-item label="高度">
+            <el-input-number
+              v-model="form.positionHeight"
+              :min="20"
+              :step="10"
+              controls-position="right"
+              style="width: 100%"
+              @change="emitUpdate"
+            />
+          </el-form-item>
+        </template>
+      </el-form>
+    </PropGroup>
+
     <!-- ② 显示 & 状态（通用） -->
     <PropGroup title="状态设置">
       <el-form label-width="72px" label-position="left" size="small">
@@ -318,6 +379,12 @@ const form = reactive({
   minLength: props.schema.minLength ?? (null as number | null),
   maxLength: props.schema.maxLength ?? (null as number | null),
   reactions: (props.schema["x-reactions"] ?? []) as Reaction[],
+  // 布局设置
+  positionType: props.schema["x-position-type"] ?? "relative",
+  positionX: props.schema["x-position"]?.x ?? 0,
+  positionY: props.schema["x-position"]?.y ?? 0,
+  positionWidth: props.schema["x-position"]?.width ?? 200,
+  positionHeight: props.schema["x-position"]?.height ?? 40,
 });
 
 // ============================================================
@@ -459,12 +526,41 @@ function emitUpdate() {
       ...(props.schema["x-component-props"] ?? {}),
       ...mergedComponentProps,
     },
+    // 布局设置
+    "x-position-type": form.positionType,
+    ...(form.positionType === 'absolute' ? {
+      "x-position": {
+        x: form.positionX,
+        y: form.positionY,
+        width: form.positionWidth,
+        height: form.positionHeight,
+        zIndex: props.schema["x-position"]?.zIndex ?? 1,
+      }
+    } : {}),
   } as Partial<FieldSchema>;
 
   if (form.minLength !== null) updates.minLength = form.minLength;
   if (form.maxLength !== null) updates.maxLength = form.maxLength;
 
   emit("update", props.nodeId, updates);
+}
+
+/**
+ * 定位类型切换时的处理
+ * relative → absolute: 初始化 x-position
+ * absolute → relative: 删除 x-position
+ */
+function handlePositionTypeChange() {
+  if (form.positionType === 'absolute') {
+    // 确保有 x-position 数据
+    if (!props.schema["x-position"]) {
+      form.positionX = 20;
+      form.positionY = 20;
+      form.positionWidth = 200;
+      form.positionHeight = 40;
+    }
+  }
+  emitUpdate();
 }
 </script>
 
