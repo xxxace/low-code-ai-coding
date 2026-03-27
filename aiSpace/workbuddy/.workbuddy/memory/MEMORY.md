@@ -75,11 +75,18 @@
 
 | 步骤 | 内容 | 状态 |
 |---|---|---|
+| Step 0 | 移除 wrapper div，修复 containing block 语义 | ✅ 已完成（8b05669） |
 | Step 1 | 创建 XLayout.vue + VoidContainer 改造 | ✅ 已完成（e3ab15d） |
 | Step 2 | FormRenderer 使用 XLayout，移除 FreeCanvas/DesignOverlay | ✅ 已完成（e3ab15d） |
-| Step 3 | FreeCanvas 改造为 AbsoluteNodeOverlay（统一交互层） | ⏳ 待实现 |
+| Step 3 | AbsoluteNodeOverlay 统一交互层 | ⏳ 待实现 |
 | Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 待实现 |
 | Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ⏳ 待实现 |
+
+### Step 0 关键决策
+- **定位样式透传**：XLayout 的 getNodeStyle() 通过 `nodeStyle` prop 透传给 VoidContainer/FieldRenderer 根元素
+- **不包 wrapper**：定位逻辑直接在根元素上，保留 CSS containing block 语义
+- **父元素约束**：absolute 节点拖拽只改坐标，禁止切换父容器（CSS 天然语义）
+- **第三方组件**：VoidContainer 根元素即为 containing block，slot 容器不影响
 
 ### 关键文件
 - `renderer/XLayout.vue`（新建，统一渲染层）
