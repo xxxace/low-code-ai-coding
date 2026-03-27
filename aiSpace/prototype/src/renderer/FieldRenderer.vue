@@ -21,8 +21,10 @@
   <template v-if="(schema as any).type === 'container'">
     <div
       class="lowcode-container-placeholder"
+      :style="nodeStyle"
       :data-container-id="(schema as any)['x-id']"
       :data-container-variant="(schema as any)['x-container-variant'] ?? 'group'"
+      @click="handleWrapperClick"
     >
       <!-- TODO: <GroupRenderer :node="(schema as ContainerNode)" :form-model="formModel" /> -->
       <slot />
@@ -35,9 +37,11 @@
     <div
       v-show="designMode || fieldState?.display !== 'hidden'"
       class="lowcode-field-wrapper"
+      :style="nodeStyle"
       :class="[fieldWrapperClass, designMode && fieldState?.display === 'hidden' ? 'lowcode-field-wrapper--design-hidden' : '']"
       :data-field-path="path"
       :data-field-id="schema['x-id']"
+      @click="handleWrapperClick"
     >
       <!-- ① FormItem 装饰器 -->
       <el-form-item
@@ -150,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, type Ref } from 'vue'
+import { computed, inject, type CSSProperties } from 'vue'
 import {
   ElSelect,
   ElOption,
@@ -179,9 +183,19 @@ interface Props {
   schema: FieldSchema
   formModel: FormModel | null
   path: string
+  /**
+   * XLayout 传入的节点定位样式
+   * - absolute 节点：{ position: absolute, left, top, width, height, zIndex }
+   * - relative 节点：空对象或不传
+   */
+  nodeStyle?: CSSProperties
+  /** 点击节点事件（设计器模式选中节点） */
+  onNodeClick?: (nodeId: string) => void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  nodeStyle: () => ({}),
+})
 
 // ============================================================
 // 注入：ComponentRegistry 和 FormRenderer 上下文
@@ -195,6 +209,21 @@ const formRendererCtx = inject<{
 
 /** 设计模式：强制所有字段可见，忽略联动 display 状态 */
 const designMode = inject<boolean>('designMode', false)
+
+/** 设计器引擎（用于触发节点选中） */
+const designerEngine = inject<any>('designerEngine', null)
+
+/** 节点点击事件（设计器模式） */
+function handleWrapperClick(): void {
+  const nodeId = props.schema['x-id']
+  if (!nodeId) return
+  // 优先用传入的 onNodeClick，否则尝试用注入的 designerEngine
+  if (props.onNodeClick) {
+    props.onNodeClick(nodeId)
+  } else if (designerEngine) {
+    designerEngine.selectNode(nodeId)
+  }
+}
 
 // ============================================================
 // 字段状态（响应式）

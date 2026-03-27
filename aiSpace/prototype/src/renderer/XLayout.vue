@@ -5,55 +5,49 @@
   核心理念：
   - 每个节点独立决定自己的定位类型（x-position-type: relative | absolute）
   - 容器默认 position: relative，成为内部 absolute 子节点的定位上下文
-  - 支持任意嵌套：你中有我、我中有你
+  - 支持任意嵌套：你中有我、我中有我
 
-  position-type 语义：
+  定位语义：
   - relative（默认）：正常文档流排列，父容器决定定位上下文
   - absolute：相对于最近 position: relative 祖先定位，支持拖拽移动和缩放
 
   渲染策略：
-  - 不分区（flow/free 两个渲染区），统一渲染所有节点
-  - absolute 节点渲染为 position: absolute
-  - relative 节点渲染为 position: relative（默认）
+  - 不分区，统一渲染所有节点
+  - 定位样式直接透传给 VoidContainer / FieldRenderer 根元素
+  - 不使用 wrapper div 承载定位，避免破坏 containing block
 -->
 <template>
   <div class="x-layout" :style="containerStyle">
     <!--
       按 x-order 排序，统一渲染所有节点
-      每个节点自己决定 position-type：
-      - absolute → position: absolute + x/y/width/height
-      - relative → position: relative（正常流式排列）
+      定位样式直接传给子组件根元素，不包 wrapper
     -->
     <template v-for="(fieldSchema, fieldKey) in sortedProperties" :key="fieldSchema['x-id'] ?? fieldKey">
-      <!-- 节点包装层：决定定位方式 -->
-      <div
-        class="x-layout__node"
-        :style="getNodeStyle(fieldSchema)"
-        :data-field-id="fieldSchema['x-id']"
-        @click.self="handleNodeClick(fieldSchema['x-id'])"
-      >
-        <!--
-          容器类型（void）：递归渲染子节点
-          父容器是 relative，子节点可以是 relative 或 absolute
-          如果子节点是 absolute，相对于父容器定位
-        -->
-        <VoidContainer
-          v-if="fieldSchema.type === 'void'"
-          :schema="fieldSchema"
-          :form-model="formModel"
-          :field-key="String(fieldKey)"
-          :path-prefix="pathPrefix"
-          :columns="columns"
-        />
+      <!--
+        容器类型（void）：VoidContainer 根元素直接承载 position 样式
+        - 容器默认 position: relative，建立内部 absolute 子节点的定位上下文
+        - 容器设为 absolute 时，其 absolute 子节点相对于画布定位
+      -->
+      <VoidContainer
+        v-if="fieldSchema.type === 'void'"
+        :schema="fieldSchema"
+        :form-model="formModel"
+        :field-key="String(fieldKey)"
+        :path-prefix="pathPrefix"
+        :columns="columns"
+        :node-style="getNodeStyle(fieldSchema)"
+        @node-click="handleNodeClick"
+      />
 
-        <!-- 普通字段 -->
-        <FieldRenderer
-          v-else
-          :schema="fieldSchema"
-          :form-model="formModel"
-          :path="buildPath(pathPrefix, String(fieldKey))"
-        />
-      </div>
+      <!-- 普通字段：FieldRenderer 根元素直接承载 position 样式 -->
+      <FieldRenderer
+        v-else
+        :schema="fieldSchema"
+        :form-model="formModel"
+        :path="buildPath(pathPrefix, String(fieldKey))"
+        :node-style="getNodeStyle(fieldSchema)"
+        :on-node-click="handleNodeClick"
+      />
     </template>
   </div>
 </template>
@@ -87,7 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // ============================================================
-// 注入设计器引擎（用于识别设计模式）
+// 注入设计器引擎
 // ============================================================
 
 const designerEngine: any = inject('designerEngine', null)
@@ -133,11 +127,9 @@ function isAbsolute(field: FieldSchema): boolean {
  *
  * 核心规则：
  * - x-position-type === 'absolute' → position: absolute + x/y/width/height
- * - 否则 → position: relative（默认流式排列）
+ * - 否则 → 空对象（由 flex 布局自然排列，不强制 position: relative）
  *
- * 容器（void）也适用此规则：
- * - 容器默认 relative，建立内部 absolute 子节点的定位上下文
- * - 容器设为 absolute 时，其 absolute 子节点相对于画布定位
+ * 注意：不包 wrapper，样式直接传给 VoidContainer / FieldRenderer 根元素
  */
 function getNodeStyle(field: FieldSchema): CSSProperties {
   if (isAbsolute(field)) {
@@ -153,35 +145,30 @@ function getNodeStyle(field: FieldSchema): CSSProperties {
     }
   }
 
-  // relative（默认）：正常流式排列
-  // 宽度跟随 x-span（如果设置了的话）
+  // relative 节点：返回空对象，不强制 position
+  // - 如果节点在容器内，由容器建立定位上下文
+  // - 如果节点在画布顶层，由 XLayout 建立定位上下文
+  // - 宽度跟随 x-span（如果设置了的话）
   if (field['x-span']) {
     const span = Math.min(Math.max(Number(field['x-span']), 1), props.columns)
     const pct = (span / props.columns) * 100
     return {
-      position: 'relative' as const,
       width: `${pct}%`,
       boxSizing: 'border-box' as const,
-      padding: '0 6px',
-      minWidth: '0',
     }
   }
 
-  return {
-    position: 'relative' as const,
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    padding: '0 6px',
-  }
+  return {}
 }
 
 /**
- * 点击节点：选中
- * 仅在设计器模式下生效
+ * 节点点击事件（设计器模式选中节点）
  */
-function handleNodeClick(nodeId: string | undefined): void {
-  if (!nodeId || !designerEngine) return
-  designerEngine.selectNode(nodeId)
+function handleNodeClick(nodeId: string): void {
+  if (!nodeId) return
+  if (designerEngine) {
+    designerEngine.selectNode(nodeId)
+  }
 }
 </script>
 
@@ -193,12 +180,5 @@ function handleNodeClick(nodeId: string | undefined): void {
   min-width: 0;
   padding: 8px 6px 0;
   box-sizing: border-box;
-}
-
-.x-layout__node {
-  /* 每个节点的外部容器
-     - absolute 节点：不受 flex 布局影响，由 left/top/width/height 定位
-     - relative 节点：由 flex 布局决定排列，宽度跟随 x-span */
-  min-width: 0;
 }
 </style>

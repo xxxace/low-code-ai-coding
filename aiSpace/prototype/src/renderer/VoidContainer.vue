@@ -1,9 +1,13 @@
-<!-- 
+<!--
   VoidContainer.vue
   虚字段容器渲染器 —— 处理 type: 'void' 的节点
-  
+
   虚字段是纯 UI 容器（Card、Tabs、Collapse 等），不参与数据绑定。
   其子字段的数据路径会"穿透"虚字段，直接挂在父节点下（借鉴 Formily VoidField）。
+
+  定位逻辑由 XLayout 统一管理，通过 nodeStyle prop 传入。
+  - position: relative（默认）→ 容器建立定位上下文，内部 absolute 子节点相对于此容器定位
+  - position: absolute → 容器本身自由定位，其 absolute 子节点相对于画布定位
 -->
 <template>
   <el-card
@@ -12,7 +16,8 @@
     class="lowcode-void-card mb-4"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
-    :style="containerStyle"
+    :style="mergedStyle"
+    @click="handleClick"
   >
     <template v-if="componentProps.title" #header>
       <span>{{ componentProps.title }}</span>
@@ -33,7 +38,8 @@
     class="lowcode-void-tabs"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
-    :style="containerStyle"
+    :style="mergedStyle"
+    @click="handleClick"
   >
     <template v-for="(paneSchema, paneKey) in schema?.properties" :key="paneKey">
       <el-tab-pane
@@ -59,7 +65,8 @@
     class="lowcode-void-collapse mb-4"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
-    :style="containerStyle"
+    :style="mergedStyle"
+    @click="handleClick"
   >
     <template v-for="(itemSchema, itemKey) in schema?.properties" :key="itemKey">
       <el-collapse-item
@@ -78,12 +85,14 @@
     </template>
   </el-collapse>
 
-  <!-- Divider 分割线 -->
+  <!-- Divider 分割线（不支持子节点，只应用基础样式） -->
   <el-divider
     v-else-if="componentName === 'Divider'"
     v-bind="componentProps"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
+    :style="schema['x-style']"
+    @click="handleClick"
   >
     {{ componentProps.title }}
   </el-divider>
@@ -93,8 +102,9 @@
     v-else
     class="lowcode-void-container"
     :class="schema['x-class']"
-    :style="{ ...containerStyle, ...schema['x-style'] }"
+    :style="mergedStyle"
     :data-field-id="schema['x-id']"
+    @click="handleClick"
   >
     <XLayout
       v-if="schema.properties"
@@ -107,9 +117,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type CSSProperties } from 'vue'
+import { computed, inject, type CSSProperties } from 'vue'
 import type { VoidFieldSchema } from '../types/schema'
-import type { FormModel } from '../types/model'
+import type { FormModel } from '../core/model'
 import XLayout from './XLayout.vue'
 
 // ============================================================
@@ -124,9 +134,25 @@ interface Props {
   pathPrefix: string
   /** 布局列数，透传给子 XLayout */
   columns?: number
+  /**
+   * XLayout 传入的节点定位样式
+   * - position: relative（默认）→ 容器建立定位上下文
+   * - position: absolute → 容器自由定位
+   */
+  nodeStyle?: CSSProperties
+  /** 点击节点事件（设计器模式选中） */
+  onNodeClick?: (nodeId: string) => void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  nodeStyle: () => ({}),
+})
+
+// ============================================================
+// 注入设计器引擎
+// ============================================================
+
+const designerEngine: any = inject('designerEngine', null)
 
 // ============================================================
 // 计算属性
@@ -137,31 +163,29 @@ const componentName = computed(() => props.schema['x-component'])
 const componentProps = computed(() => props.schema['x-component-props'] ?? {})
 
 /**
- * 容器根元素的定位样式
- *
- * 关键：容器默认 position: relative，建立内部 absolute 子节点的定位上下文。
- * 如果容器本身是 absolute，则其 absolute 子节点相对于画布（而非容器）定位。
+ * 合并样式：nodeStyle（定位）+ schema['x-style']（用户自定义）
+ * nodeStyle 由 XLayout 根据 x-position-type 计算，优先级最高
  */
-const containerStyle = computed((): CSSProperties => {
-  const base: CSSProperties = {}
-
-  if (props.schema['x-position-type'] === 'absolute') {
-    const pos = props.schema['x-position']
-    Object.assign(base, {
-      position: 'absolute',
-      left: `${pos?.x ?? 0}px`,
-      top: `${pos?.y ?? 0}px`,
-      width: `${pos?.width ?? 400}px`,
-      height: `${pos?.height ?? 200}px`,
-      boxSizing: 'border-box',
-    })
-  } else {
-    // relative（默认）：建立定位上下文，供 absolute 子节点定位
-    Object.assign(base, { position: 'relative' as const })
+const mergedStyle = computed((): CSSProperties => {
+  return {
+    ...props.nodeStyle,
+    ...(props.schema['x-style'] ?? {}),
   }
-
-  return base
 })
+
+// ============================================================
+// 事件处理
+// ============================================================
+
+function handleClick(): void {
+  const nodeId = props.schema['x-id']
+  if (!nodeId) return
+  if (props.onNodeClick) {
+    props.onNodeClick(nodeId)
+  } else if (designerEngine) {
+    designerEngine.selectNode(nodeId)
+  }
+}
 </script>
 
 <style scoped>
