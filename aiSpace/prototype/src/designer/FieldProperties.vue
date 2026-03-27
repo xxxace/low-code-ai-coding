@@ -182,6 +182,7 @@
         v-for="(r, idx) in form.reactions"
         :key="idx"
         class="reaction-chip"
+        :class="{ 'reaction-chip--disabled': r.enabled === false }"
       >
         <span class="reaction-chip__when">{{ r.when || '始终' }}</span>
         <span class="reaction-chip__arrow">→</span>
@@ -315,18 +316,11 @@ function handleReactionConfirm(reactions: Reaction[]) {
 
 /** 规则摘要文字（只读展示用） */
 function reactionFulfillLabel(r: Reaction): string {
+  if (r.enabled === false) return '（已禁用）'
   const state = r.fulfill?.state ?? {}
   if ('visible' in state) return state.visible ? '显示' : '隐藏'
-  if ('pattern' in state) {
-    const map: Record<string, string> = {
-      disabled: '禁用',
-      readOnly: '只读',
-      editable: '可编辑',
-      readPretty: '阅读态',
-    }
-    return map[state.pattern as string] ?? state.pattern as string
-  }
-  if ('required' in state) return state.required ? '必填' : '非必填'
+  if ('disabled' in state) return state.disabled ? '禁用字段' : '恢复可编辑'
+  if ('required' in state) return state.required ? '必填' : '取消必填'
   return '—'
 }
 
@@ -494,6 +488,15 @@ function emitUpdate() {
   color: #409eff;
   font-weight: 500;
   flex-shrink: 0;
+}
+
+/* 禁用状态的规则摘要卡片：半透明 + 灰色字 */
+.reaction-chip--disabled {
+  opacity: 0.45;
+}
+
+.reaction-chip--disabled .reaction-chip__fulfill {
+  color: #909399;
 }
 
 .text-xs {

@@ -294,6 +294,9 @@ export class ReactionsEngine {
   }
 
   private _executeReaction(sourcePath: string, reaction: Reaction): void {
+    // enabled 默认为 true；显式设为 false 时跳过（规则数据保留，只是不执行）
+    if (reaction.enabled === false) return
+
     const cycleKey = `${sourcePath}:${reaction.target ?? 'self'}`
     if (!this._cycleDetector.enter(cycleKey)) return
 

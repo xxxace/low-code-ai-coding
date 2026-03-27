@@ -108,6 +108,8 @@ TypeScript 类型检查：零错误
 
 - ✅ 新建 `ReactionEditorDialog.vue`：联动规则编辑弹窗，直接编辑 `when` 表达式字符串（不区分 $self/$deps），支持目标字段（target）输入
 - ✅ `FieldProperties` 联动规则区改为摘要模式：「共 N 条规则 + 编辑按钮」+ 每条一行只读摘要卡片（when → 效果），不再内联展开
+- ✅ `ReactionEditorDialog` 升级为三区布局：顶栏搜索+新增、左侧规则名称列表（颜色徽章+条件预览）、右侧详情编辑（名称/备注/条件/依赖/目标/效果）；schema.ts Reaction 新增 name/remark 字段
+- ✅ 规则启用/禁用机制：Reaction 接口加 `enabled?: boolean`；引擎 `_executeReaction` 跳过 enabled===false 的规则；左侧徽章改为绿=启用/灰=禁用；右侧顶部加 toggle 按钮；效果类型精简（去掉只读，保留显示/隐藏/禁用字段/必填/取消必填）
 
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）

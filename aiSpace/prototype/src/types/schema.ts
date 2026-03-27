@@ -146,6 +146,19 @@ export interface ReactionEffect {
 
 export interface Reaction {
   /**
+   * 规则名称（设计器 UI 专用，便于识别多条规则）
+   */
+  name?: string
+  /**
+   * 备注/注释（设计器 UI 专用，记录规则用途）
+   */
+  remark?: string
+  /**
+   * 规则是否启用（默认 true）
+   * false = 引擎跳过此规则，规则数据保留
+   */
+  enabled?: boolean
+  /**
    * 依赖字段路径列表（点路径，如 'user.name'）
    * $deps[n] 对应 dependencies[n] 的当前值
    */
