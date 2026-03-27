@@ -53,11 +53,21 @@
 - designer/ 全部 UI 组件 + engine + composables
 - 容器组件（Card/Tabs/Collapse/Divider）物料注册 + 设计器交互
 - 跨容器拖拽（容器内↔容器外，原子操作 moveNodeAcrossContainers）
-- 单元测试 152 个全部通过（schemaUtils 43 / HistoryManager 16 / ComponentRegistry 24 / FormModel 52 / ReactionsEngine 17）
+- 预览功能（el-dialog 弹窗）
+- 导出 Schema（handleExport JSON 下载）
+- 导入 Schema（validateImportedSchema 校验 + ElMessageBox 覆盖确认 + engine.loadSchema）
+- 单元测试 154 个全部通过（2026-03-27 下午）
 - TypeScript 零错误，Vite 构建成功
 
-**StdForm 适配层已从规划中移除**（用户要求）。
-**Monorepo 包结构从 4 包调整为 3 包**（core/renderer/designer，移除 stdform）。
+**待实现功能**（按优先级）：
+1. FreeLayout 完整交互（中）：拖拽移动 + 8方向缩放
+2. x-relation 关系字段 UI（中）：属性面板无 Setter
+3. 其他低优先级项见 FEATURE_CHECKLIST.md
+
+**已否决/移除项**：
+- GroupRenderer.vue：已否决，由 VoidContainer 替代
+- StdForm 适配层：已从规划中移除
+- Monorepo 4包→3包（core/renderer/designer）
 
 开发服务器：`http://localhost:5173`（在 prototype/ 目录运行 npx vite）
 运行测试：`cd prototype && npx vitest run`

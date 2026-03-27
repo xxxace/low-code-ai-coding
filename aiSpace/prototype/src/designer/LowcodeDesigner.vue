@@ -52,6 +52,7 @@
         </el-button-group>
 
         <el-button size="small" @click="showPreview = true">预览</el-button>
+        <el-button size="small" @click="triggerImportFile">导入 Schema</el-button>
         <el-button size="small" type="primary" @click="handleExport"
           >导出 Schema</el-button
         >
@@ -178,12 +179,21 @@
         <el-button @click="showCodeDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 隐藏的文件上传 input -->
+    <input
+      ref="importFileInputRef"
+      type="file"
+      accept=".json,application/json"
+      class="hidden"
+      @change="handleFileSelected"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, provide } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { RefreshLeft, RefreshRight, Plus } from "@element-plus/icons-vue";
 import type { PageSchema, FieldSchema } from "../core/schema";
 import { useDesignerEngine } from "./engine/designerEngine";
@@ -238,6 +248,7 @@ const { handleKeyDown } = useKeyboardShortcuts(engine);
 const canvasRef = ref<HTMLElement | null>(null);
 const showPreview = ref(false);
 const showCodeDialog = ref(false);
+const importFileInputRef = ref<HTMLInputElement | null>(null);
 
 const currentSchema = computed(() => engine.schema.value);
 
@@ -339,6 +350,161 @@ function handleExport(): void {
 function copyCode(): void {
   navigator.clipboard.writeText(generatedCode.value);
   ElMessage.success("代码已复制到剪贴板");
+}
+
+// ============================================================
+// 导入 Schema
+// ============================================================
+
+/**
+ * 导入校验结果
+ */
+interface ValidationResult {
+  /** 是否通过致命校验 */
+  valid: boolean;
+  /** 致命错误消息（校验失败时） */
+  error?: string;
+  /** 警告消息列表（非致命，可补全的字段缺失） */
+  warnings: string[];
+  /** 校验通过后可直接使用的 schema */
+  schema?: PageSchema;
+}
+
+/**
+ * 校验导入的 Schema 结构
+ * - 致命错误：JSON 解析失败、version 缺失、schema.type !== 'object'
+ * - 警告：缺少 id、__meta__（可补全，不阻断）
+ */
+function validateImportedSchema(raw: unknown): ValidationResult {
+  // 1. 类型检查
+  if (!raw || typeof raw !== 'object') {
+    return { valid: false, error: '文件格式错误，请选择有效的 JSON 文件', warnings: [] };
+  }
+
+  const obj = raw as Record<string, unknown>;
+
+  // 2. 致命校验
+  if (!obj.version) {
+    return { valid: false, error: 'Schema 缺少 version 字段，无法识别版本', warnings: [] };
+  }
+
+  if (!obj.schema || typeof obj.schema !== 'object') {
+    return { valid: false, error: 'Schema 结构不完整，缺少 schema 字段', warnings: [] };
+  }
+
+  const schema = obj.schema as Record<string, unknown>;
+  if (schema.type !== 'object') {
+    return { valid: false, error: 'Schema 的根类型必须是 object', warnings: [] };
+  }
+
+  if (!schema.properties || typeof schema.properties !== 'object') {
+    return { valid: false, error: 'Schema 缺少 properties 字段', warnings: [] };
+  }
+
+  // 3. 警告检测（可补全的字段缺失）
+  const warnings: string[] = [];
+  if (!obj.id) {
+    warnings.push('缺少 id 字段，将自动生成');
+  }
+  if (!obj.__meta__) {
+    warnings.push('缺少 __meta__ 元信息，将使用默认值');
+  }
+
+  return {
+    valid: true,
+    warnings,
+    schema: raw as PageSchema,
+  };
+}
+
+/**
+ * 触发文件选择器
+ */
+function triggerImportFile(): void {
+  importFileInputRef.value?.click();
+}
+
+/**
+ * 处理文件选择
+ */
+function handleFileSelected(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+
+  if (!file) return;
+
+  // 重置 input，允许重复选择同一文件
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target?.result as string;
+      if (!content.trim()) {
+        ElMessage.warning('文件内容为空');
+        return;
+      }
+
+      const parsed = JSON.parse(content);
+      const validation = validateImportedSchema(parsed);
+
+      if (!validation.valid) {
+        ElMessage.error(validation.error);
+        return;
+      }
+
+      // 自动补全缺失字段
+      const schema = validation.schema!;
+      if (!schema.id) {
+        schema.id = generateSchemaId();
+      }
+      if (!schema.__meta__) {
+        schema.__meta__ = {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        schema.__meta__.updatedAt = new Date().toISOString();
+      }
+
+      // 警告提示
+      if (validation.warnings.length > 0) {
+        console.warn('[Import] Warnings:', validation.warnings.join('; '));
+      }
+
+      // 确认覆盖
+      if (!isSchemaEmpty.value) {
+        ElMessageBox.confirm(
+          '当前画布已有内容，导入将覆盖现有设计。是否继续？',
+          '确认导入',
+          { confirmButtonText: '导入', cancelButtonText: '取消', type: 'warning' }
+        )
+          .then(() => doImport(schema))
+          .catch(() => {});
+      } else {
+        doImport(schema);
+      }
+    } catch {
+      ElMessage.error('文件格式错误，请选择有效的 JSON 文件');
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+/**
+ * 执行导入
+ */
+function doImport(schema: PageSchema): void {
+  engine.loadSchema(schema);
+  ElMessage.success('Schema 导入成功');
+}
+
+/**
+ * 生成简短 ID
+ */
+function generateSchemaId(): string {
+  return `schema_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 </script>
 
@@ -451,5 +617,10 @@ function copyCode(): void {
   font-size: 12px;
   line-height: 1.6;
   max-height: 500px;
+}
+
+/* 隐藏文件上传 input */
+.hidden {
+  display: none;
 }
 </style>

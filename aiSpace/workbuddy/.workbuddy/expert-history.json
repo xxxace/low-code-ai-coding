@@ -53,7 +53,27 @@
         "usedAt": 1774596237133,
         "industryId": "all"
       }
+    ],
+    "752873dfaf9a4d288121126382afb2fc": [
+      {
+        "expertId": "SeniorProjectManager",
+        "name": "Dylan",
+        "profession": "高级项目经理",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/07-ProjectManagement/SeniorProjectManager/SeniorProjectManager.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/07-ProjectManagement/SeniorProjectManager/SeniorProjectManager_zh.md",
+        "usedAt": 1774605487228,
+        "industryId": "07-ProjectManagement"
+      },
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1774603964741,
+        "industryId": "all"
+      }
     ]
   },
-  "lastUpdated": 1774601544945
+  "lastUpdated": 1774609507691
 }

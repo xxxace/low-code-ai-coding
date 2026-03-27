@@ -82,9 +82,9 @@
 
 | 功能 | 说明 | 优先级 |
 |---|---|---|
-| 预览模式 | 设计器内切换"运行预览"，隐藏 overlay 和属性面板 | 高 |
-| 导出/导入 Schema | Schema JSON 文件导出与导入，对接后端存储 | 高 |
-| GroupRenderer.vue | ContainerNode 正式渲染，支持嵌套字段 | 中 |
+| 预览模式 | 设计器内切换"运行预览"，隐藏 overlay 和属性面板 | ~~高~~ → ✅ 已完成（LowcodeDesigner.vue 第 163-171 行 el-dialog 预览弹窗） |
+| 导出/导入 Schema | Schema JSON 文件导出与导入，对接后端存储 | ~~高~~ → 导出已完成（handleExport），✅ 导入已完成（validateImportedSchema + ElMessageBox 覆盖确认） |
+| GroupRenderer.vue | ~~ContainerNode 正式渲染~~ → 已否决（VoidContainer 替代） | — |
 | FreeLayout 完整交互 | 拖拽移动 + 8方向缩放（deskclaw 已调研方案可直接实现） | 中 |
 | x-relation 关系字段 UI | Schema 有 x-relation，属性面板无对应 Setter | 中 |
 | 数据源配置 UI | DataSourceConfig 类型已定义，无设计器界面 | 低 |
@@ -119,7 +119,7 @@
 | 布局 | 双布局（flow + free）统一一套 Schema，按 layoutMode 切换 |
 | 关系字段 | x-relation 扩展对接 RelationRegister |
 | 历史记录 | JSON 快照模式（snapshots[] + index） |
-| 包结构 | 4 包 Monorepo（core/renderer/designer/stdform）——规划，未拆 |
+| 包结构 | 3 包 Monorepo（core/renderer/designer）——规划，未拆；stdform 适配层已移除 |
 | 架构分层 | core → renderer → designer 单向依赖 |
 | 垫片兼容 | types/ 4 文件 re-export，零破坏性变更 |
 
