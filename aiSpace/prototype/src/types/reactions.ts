@@ -185,9 +185,46 @@ export class ReactionsEngine {
 
   /**
    * 初始化：解析所有字段的联动规则，建立响应式监听
+   * 同时立即执行一轮，确保初始状态（display/pattern 等）被正确设置，
+   * 避免 flush:'post' 延迟导致首屏状态不一致
    */
   init(): void {
     this._walkSchema(this._formModel.schema.schema.properties)
+    // 立即触发一轮：将 _fields 里所有有联动规则的字段执行一次
+    this._runAllReactionsOnce()
+  }
+
+  /**
+   * 立即同步执行一轮所有联动规则（初始化时调用）
+   */
+  private _runAllReactionsOnce(): void {
+    this._walkAndExecuteOnce(this._formModel.schema.schema.properties)
+  }
+
+  private _walkAndExecuteOnce(
+    properties: Record<string, FieldSchema>,
+    pathPrefix = ''
+  ): void {
+    for (const [key, fieldSchema] of Object.entries(properties)) {
+      const path = pathPrefix ? `${pathPrefix}.${key}` : key
+
+      if (fieldSchema.type === 'void') {
+        const voidSchema = fieldSchema as { properties?: Record<string, FieldSchema> }
+        if (voidSchema.properties) {
+          this._walkAndExecuteOnce(voidSchema.properties, pathPrefix)
+        }
+        continue
+      }
+
+      const reactions: Reaction[] = fieldSchema['x-reactions'] ?? []
+      for (const reaction of reactions) {
+        this._executeReaction(path, reaction)
+      }
+
+      if (fieldSchema.type === 'object' && (fieldSchema as ObjectFieldSchema).properties) {
+        this._walkAndExecuteOnce((fieldSchema as ObjectFieldSchema).properties, path)
+      }
+    }
   }
 
   /**

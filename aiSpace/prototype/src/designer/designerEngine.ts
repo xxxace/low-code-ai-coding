@@ -9,7 +9,7 @@
  * 4. 管理历史记录（撤销/重做）
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import type { PageSchema, FieldSchema, ObjectFieldSchema, VoidFieldSchema } from '../types/schema'
 
 // ============================================================
@@ -20,31 +20,41 @@ export class HistoryManager {
   private snapshots: string[] = []
   private index = -1
   private readonly maxSnapshots: number
+  /**
+   * 响应式 index 副本——让 Vue computed 能追踪到 push/undo/redo 后的状态变化
+   * 普通 class getter 不是响应式，computed 依赖追踪不到，按钮永远 disabled
+   */
+  readonly indexRef: Ref<number>
 
   constructor(maxSnapshots = 50) {
     this.maxSnapshots = maxSnapshots
+    this.indexRef = ref(-1)
   }
 
   push(schema: PageSchema): void {
     this.snapshots = this.snapshots.slice(0, this.index + 1)
     this.snapshots.push(JSON.stringify(schema))
     this.index++
+    this.indexRef.value = this.index
 
     if (this.snapshots.length > this.maxSnapshots) {
       this.snapshots.shift()
       this.index--
+      this.indexRef.value = this.index
     }
   }
 
   undo(): PageSchema | null {
     if (this.index <= 0) return null
     this.index--
+    this.indexRef.value = this.index
     return JSON.parse(this.snapshots[this.index]) as PageSchema
   }
 
   redo(): PageSchema | null {
     if (this.index >= this.snapshots.length - 1) return null
     this.index++
+    this.indexRef.value = this.index
     return JSON.parse(this.snapshots[this.index]) as PageSchema
   }
 
@@ -59,6 +69,7 @@ export class HistoryManager {
   clear(): void {
     this.snapshots = []
     this.index = -1
+    this.indexRef.value = -1
   }
 }
 
@@ -130,8 +141,15 @@ export function useDesignerEngine() {
     }
   }
 
-  const canUndo = computed(() => history.canUndo)
-  const canRedo = computed(() => history.canRedo)
+  // 依赖响应式 indexRef，确保 push/undo/redo 后按钮状态实时更新
+  const canUndo = computed(() => {
+    void history.indexRef.value  // 订阅响应式 index
+    return history.canUndo
+  })
+  const canRedo = computed(() => {
+    void history.indexRef.value  // 订阅响应式 index
+    return history.canRedo
+  })
 
   // ============================================================
   // 节点操作

@@ -36,6 +36,17 @@
         <el-form-item label="字段描述">
           <el-input v-model="form.description" @change="emitUpdate" />
         </el-form-item>
+        <el-form-item label="值类型">
+          <el-select v-model="form.type" @change="emitUpdate" style="width:100%">
+            <el-option label="字符串 (string)" value="string" />
+            <el-option label="数字 (number)" value="number" />
+            <el-option label="布尔 (boolean)" value="boolean" />
+            <el-option label="数组 (array)" value="array" />
+            <el-option label="对象 (object)" value="object" />
+            <el-option label="整数 (integer)" value="integer" />
+          </el-select>
+          <div class="prop-hint">决定表单提交时该字段的值类型</div>
+        </el-form-item>
         <el-form-item label="占位文本" v-if="hasPlaceholder">
           <el-input v-model="form.placeholder" @change="emitUpdate" />
         </el-form-item>
@@ -254,6 +265,7 @@ const propSetterGroups = computed<PropSetterGroup[]>(() => {
 const form = reactive({
   title: props.schema.title ?? '',
   description: props.schema.description ?? '',
+  type: props.schema.type ?? 'string',
   placeholder: props.schema['x-component-props']?.placeholder ?? '',
   defaultValue: props.schema.default != null ? String(props.schema.default) : '',
   span: props.schema['x-span'] ?? 1,
@@ -315,7 +327,12 @@ const reactionFulfillType = ref<string[]>(
 )
 
 function addReaction() {
-  form.reactions.push({ dependencies: [], when: '', fulfill: { state: { visible: true } } })
+  form.reactions.push({
+    dependencies: [],
+    when: '',
+    fulfill: { state: { visible: true } },
+    otherwise: { state: { visible: false } },
+  })
   reactionDepsInput.value.push('')
   reactionFulfillType.value.push('visible')
   emitUpdate()
@@ -336,15 +353,21 @@ function updateReactionDeps(idx: number, value: string) {
 function updateReactionFulfill(idx: number) {
   const type = reactionFulfillType.value[idx]
   if (type === 'visible') {
+    // 满足条件 → 显示；不满足 → 隐藏（自动补 otherwise，确保初始状态正确）
     form.reactions[idx].fulfill = { state: { visible: true } }
+    form.reactions[idx].otherwise = { state: { visible: false } }
   } else if (type === 'hidden') {
     form.reactions[idx].fulfill = { state: { visible: false } }
+    form.reactions[idx].otherwise = { state: { visible: true } }
   } else if (type === 'disabled') {
     form.reactions[idx].fulfill = { state: { pattern: 'disabled' } }
+    form.reactions[idx].otherwise = { state: { pattern: 'editable' } }
   } else if (type === 'readOnly') {
     form.reactions[idx].fulfill = { state: { pattern: 'readOnly' } }
+    form.reactions[idx].otherwise = { state: { pattern: 'editable' } }
   } else if (type === 'required') {
     form.reactions[idx].fulfill = { state: { required: true } }
+    form.reactions[idx].otherwise = { state: { required: false } }
   }
   emitUpdate()
 }
@@ -363,11 +386,12 @@ const hasPlaceholder = computed(() => {
 // 监听 schema 变化（切换选中节点时刷新面板）
 // ============================================================
 
-watch(
+  watch(
   () => props.schema,
   (schema) => {
     form.title = schema.title ?? ''
     form.description = schema.description ?? ''
+    form.type = schema.type ?? 'string'
     form.placeholder = schema['x-component-props']?.placeholder ?? ''
     form.defaultValue = schema.default != null ? String(schema.default) : ''
     form.span = schema['x-span'] ?? 1
@@ -415,6 +439,7 @@ function emitUpdate() {
   const updates: Partial<FieldSchema> = {
     title: form.title,
     description: form.description,
+    type: form.type as FieldSchema['type'],
     default: form.defaultValue || undefined,
     'x-span': form.span,
     'x-display': form.display,

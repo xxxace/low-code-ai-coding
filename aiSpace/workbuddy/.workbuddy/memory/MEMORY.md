@@ -98,6 +98,12 @@ TypeScript 类型检查：零错误
 - **新组件**：`PropGroup.vue`（带折叠的属性分组）、`OptionsEditor.vue`（枚举选项编辑器）
 - **FieldProperties 重构**：从硬编码改为动态渲染；顶部增加字段类型标识徽章；联动规则增加"结果类型"下拉（visible/hidden/disabled/readOnly/required）
 
+## 第十二阶段（2026-03-26）：条件渲染预览、undo/redo、type 属性三项修复
+
+- ✅ 条件渲染预览：`updateReactionFulfill` 自动补充 otherwise（反向状态）；ReactionsEngine.init() 新增立即执行一轮机制，确保首屏条件渲染状态正确
+- ✅ undo/redo 按钮：HistoryManager 加 `indexRef: Ref<number>` 响应式副本，canUndo/canRedo computed 依赖它，彻底解决 class getter 不被 Vue 追踪的问题
+- ✅ 属性面板值类型：FieldProperties 基础属性区新增「值类型」下拉（string/number/boolean/array/object/integer）
+
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
 - 编写单元测试（ReactionsEngine、FormModel）
