@@ -260,6 +260,100 @@ export function moveNodeById(
 }
 
 // ============================================================
+// 跨容器移动
+// ============================================================
+
+/**
+ * 将节点从原 parent 移动到目标容器内
+ *
+ * @param rootSchema   根 Schema 节点（会在深拷贝上操作，调用方负责深拷贝）
+ * @param nodeId       要移动的节点 x-id
+ * @param containerId  目标容器的 x-id
+ * @returns 是否成功
+ *
+ * 算法：
+ * 1. 找到源节点及其 parent properties（同时保存节点对象和 key）
+ * 2. 找到目标容器节点，确认它有 properties
+ * 3. 从 parent properties 中删除源节点
+ * 4. 将源节点插入目标容器 properties 末尾（分配 maxOrder + 10）
+ * 5. 如果目标容器内已有同名 key，追加时间戳后缀避免冲突
+ */
+export function moveNodeToContainer(
+  rootSchema: SchemaWithProperties,
+  nodeId: string,
+  containerId: string
+): boolean {
+  // 不能移动到自身
+  if (nodeId === containerId) return false
+
+  // --- 第一遍：找到源节点 + 其父 properties + 原始 key ---
+  let sourceNode: FieldSchema | null = null
+  let sourceKey: string | null = null
+  let sourceParentProps: Record<string, FieldSchema> | null = null
+
+  function findSource(properties: Record<string, FieldSchema>): boolean {
+    for (const [key, fieldSchema] of Object.entries(properties)) {
+      if (fieldSchema['x-id'] === nodeId) {
+        sourceNode = fieldSchema
+        sourceKey = key
+        sourceParentProps = properties
+        return true
+      }
+      if ('properties' in fieldSchema && fieldSchema.properties) {
+        if (findSource(fieldSchema.properties as Record<string, FieldSchema>)) return true
+      }
+    }
+    return false
+  }
+
+  const rootProps = 'properties' in rootSchema ? rootSchema.properties : null
+  if (!rootProps) return false
+  if (!findSource(rootProps)) return false
+  if (!sourceNode || !sourceKey || !sourceParentProps) return false
+
+  // --- 第二遍：找到目标容器节点 ---
+  function findContainer(properties: Record<string, FieldSchema>): FieldSchema | null {
+    for (const fieldSchema of Object.values(properties)) {
+      if (fieldSchema['x-id'] === containerId) return fieldSchema
+      if ('properties' in fieldSchema && fieldSchema.properties) {
+        const found = findContainer(fieldSchema.properties as Record<string, FieldSchema>)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  const containerNode = findContainer(rootProps)
+  if (!containerNode) return false
+
+  // 目标容器必须有 properties（void/object 类型）
+  if (!('properties' in containerNode)) {
+    ;(containerNode as any).properties = {}
+  }
+  const targetProps = (containerNode as SchemaWithProperties).properties as Record<string, FieldSchema>
+
+  // --- 执行移动 ---
+  // 1. 从原 parent 摘除
+  delete sourceParentProps[sourceKey]
+
+  // 2. 计算新 x-order（末尾 + 10）
+  const maxOrder = Object.values(targetProps).reduce(
+    (max, f) => Math.max(max, f['x-order'] ?? 0),
+    0
+  )
+  sourceNode['x-order'] = maxOrder + 10
+
+  // 3. 处理 key 冲突：目标容器内已有同名 key 则追加后缀
+  let newKey = sourceKey
+  if (newKey in targetProps) {
+    newKey = `${sourceKey}_${Date.now()}`
+  }
+
+  targetProps[newKey] = sourceNode
+  return true
+}
+
+// ============================================================
 // 位置更新（自由布局专用）
 // ============================================================
 

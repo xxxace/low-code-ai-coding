@@ -25,6 +25,7 @@ import {
   duplicateNodeById,
   moveNodeById,
   sortNodesInSchema,
+  moveNodeToContainer as moveNodeToContainerUtil,
   updateNodeFreePositionById,
   updateNodeFreeSizeById,
 } from './schemaUtils'
@@ -244,6 +245,22 @@ export function useDesignerEngine() {
     designerBus.emit('schema:changed', { schema: newSchema })
   }
 
+  function moveNodeToContainer(nodeId: string, containerId: string): void {
+    if (!schema.value || nodeId === containerId) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+    const moved = moveNodeToContainerUtil(newSchema.schema, nodeId, containerId)
+
+    if (!moved) {
+      console.warn(`[DesignerEngine] moveNodeToContainer: 无法将节点 ${nodeId} 移入容器 ${containerId}`)
+      return
+    }
+
+    schema.value = newSchema
+    saveSnapshot()
+    designerBus.emit('schema:changed', { schema: newSchema })
+  }
+
   function updateNodeFreePosition(
     nodeId: string,
     position: { x: number; y: number }
@@ -333,6 +350,7 @@ const handleSubmit = (values: Record<string, any>) => {
     duplicateNode,
     moveNode,
     sortNodes,
+    moveNodeToContainer,
     updateNodeProps,
     updateNodeFreePosition,
     updateNodeFreeSize,

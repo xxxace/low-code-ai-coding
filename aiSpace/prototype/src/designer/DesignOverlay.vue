@@ -29,7 +29,9 @@
           'design-overlay__item--hovered': item.nodeId === hoveredNodeId && item.nodeId !== selectedNodeId,
           'design-overlay__item--container': item.isContainer,
           'design-overlay__item--draggable': isFreeLayout && item.nodeId === selectedNodeId,
-          'design-overlay__item--drag-over': dragOverNodeId === item.nodeId && dragNodeId !== item.nodeId,
+          'design-overlay__item--dragging': dragNodeId === item.nodeId,
+          'design-overlay__item--drag-over': dragOverNodeId === item.nodeId && dragNodeId !== item.nodeId && dropIntent !== 'into',
+          'design-overlay__item--drag-into': dragOverNodeId === item.nodeId && dragNodeId !== item.nodeId && dropIntent === 'into',
         }"
         :style="item.style"
         :draggable="!isFreeLayout"
@@ -38,8 +40,8 @@
         @mousedown.stop="handleItemMouseDown(item.nodeId, $event)"
         @dragstart.stop="handleDragStart(item.nodeId, $event)"
         @dragend.stop="handleDragEnd"
-        @dragover.prevent.stop="handleDragOver(item.nodeId, $event)"
-        @dragleave.stop="handleDragLeave(item.nodeId)"
+        @dragover.prevent="handleDragOver(item.nodeId, $event)"
+        @dragleave.stop="handleDragLeave(item.nodeId, $event)"
         @drop.stop="handleDrop(item.nodeId)"
       >
         <!-- 自由布局：8个缩放手柄（仅选中时显示） -->
@@ -163,10 +165,12 @@ const emit = defineEmits<{
   (e: 'remove-node', id: string): void
   (e: 'duplicate-node', id: string): void
   (e: 'move-node', id: string, direction: 'up' | 'down'): void
+  (e: 'reorder-nodes', fromId: string, toId: string, position: 'before' | 'after'): void
+  (e: 'move-to-container', nodeId: string, containerId: string): void
   (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
   (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
-  (e: 'reorder-nodes', fromId: string, toId: string): void
 }>()
+
 
 // ============================================================
 // 操作栏四向边界感知
@@ -260,28 +264,31 @@ interface FlatNode {
   id: string
   label: string
   isContainer: boolean
+  /** 父节点 x-id，根层节点为 '__root__' */
+  parentId: string
 }
 
 const flatNodes = computed<FlatNode[]>(() => {
   const nodes: FlatNode[] = []
 
-  function walk(properties: Record<string, FieldSchema>) {
+  function walk(properties: Record<string, FieldSchema>, parentId: string) {
     for (const [, schema] of Object.entries(properties)) {
       if (schema['x-id']) {
         nodes.push({
           id: schema['x-id'],
           label: schema.title ?? schema['x-component'] ?? '未知',
           isContainer: schema.type === 'void' || schema.type === 'object',
+          parentId,
         })
       }
       if ('properties' in schema && schema.properties) {
-        walk(schema.properties as Record<string, FieldSchema>)
+        walk(schema.properties as Record<string, FieldSchema>, schema['x-id'] ?? parentId)
       }
     }
   }
 
   if (props.schema?.schema?.properties) {
-    walk(props.schema.schema.properties)
+    walk(props.schema.schema.properties, '__root__')
   }
   return nodes
 })
@@ -438,9 +445,11 @@ const resizingNodeId = ref<string | null>(null)
 const resizingDirection = ref<string | null>(null)
 
 function handleItemMouseDown(nodeId: string, e: MouseEvent): void {
-  // 自由布局模式下，拖拽由 FreeCanvas 组件处理
-  // 流式布局模式下，此组件不处理拖拽
-  e.preventDefault()
+  // 自由布局模式下，拖拽由 FreeCanvas 组件处理，阻止默认行为（避免文字选中）
+  // 流式布局模式下，不能 preventDefault，否则会阻断 HTML5 dragstart 事件链
+  if (isFreeLayout.value) {
+    e.preventDefault()
+  }
 }
 
 function handleMouseMove(e: MouseEvent): void {
@@ -461,6 +470,8 @@ function handleMouseUp(e: MouseEvent): void {
 
 const dragNodeId = ref<string | null>(null)
 const dragOverNodeId = ref<string | null>(null)
+/** 当前 drop 的位置意图：before/after（同层排序）或 into（移入容器） */
+const dropIntent = ref<'before' | 'after' | 'into' | null>(null)
 
 function handleDragStart(nodeId: string, e: DragEvent): void {
   if (isFreeLayout.value) return
@@ -475,6 +486,8 @@ function handleDragStart(nodeId: string, e: DragEvent): void {
 function handleDragEnd(): void {
   dragNodeId.value = null
   dragOverNodeId.value = null
+  dropIntent.value = null
+  dropIndicator.value = null
 }
 
 function handleDragOver(nodeId: string, e: DragEvent): void {
@@ -482,25 +495,109 @@ function handleDragOver(nodeId: string, e: DragEvent): void {
   if (nodeId === dragNodeId.value) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+
   dragOverNodeId.value = nodeId
+
+  // 找到当前 target 的 overlay item，计算鼠标在其中的相对位置
+  const targetItem = overlayItems.value.find((i) => i.nodeId === nodeId)
+  if (!targetItem) return
+
+  const itemTop = parseFloat(targetItem.style.top as string) || 0
+  const itemHeight = parseFloat(targetItem.style.height as string) || 0
+  const itemLeft = parseFloat(targetItem.style.left as string) || 0
+  const itemWidth = parseFloat(targetItem.style.width as string) || 0
+
+  // 获取 overlay 容器在视口的偏移，将 clientY 转换为 overlay 坐标系
+  const overlayRect = overlayRef.value?.getBoundingClientRect()
+  if (!overlayRect) return
+  const relY = e.clientY - overlayRect.top
+
+  // 鼠标在 item 中的相对比例（0 ~ 1）
+  const ratio = itemHeight > 0 ? (relY - itemTop) / itemHeight : 0.5
+
+  // 目标是容器 + 鼠标落在中间 35%~65% → 移入容器
+  const targetNode = flatNodes.value.find((n) => n.id === nodeId)
+  const isTargetContainer = targetNode?.isContainer ?? false
+
+  let intent: 'before' | 'after' | 'into'
+  if (isTargetContainer && ratio >= 0.35 && ratio <= 0.65) {
+    intent = 'into'
+  } else {
+    intent = ratio < 0.5 ? 'before' : 'after'
+  }
+  dropIntent.value = intent
+
+  // 更新指示线（'into' 时不显示横线，改由 CSS class 绿框表示）
+  if (intent === 'into') {
+    dropIndicator.value = null
+  } else {
+    // before → 指示线在 item 顶边；after → 在底边
+    const indicatorTop = intent === 'before' ? itemTop - 1 : itemTop + itemHeight - 1
+    dropIndicator.value = {
+      style: {
+        left: `${itemLeft}px`,
+        top: `${indicatorTop}px`,
+        width: `${itemWidth}px`,
+      },
+    }
+  }
 }
 
-function handleDragLeave(nodeId: string): void {
+function handleDragLeave(nodeId: string, e: DragEvent): void {
+  // relatedTarget 是鼠标移入的新元素
+  // 若新元素仍在当前 overlay-item 内部（子元素触发的 dragleave），忽略它
+  const related = e.relatedTarget as Node | null
+  const currentItem = (e.currentTarget as HTMLElement | null)
+  if (currentItem && related && currentItem.contains(related)) return
+
   if (dragOverNodeId.value === nodeId) {
     dragOverNodeId.value = null
+    dropIntent.value = null
+    dropIndicator.value = null
   }
 }
 
 function handleDrop(toNodeId: string): void {
   if (isFreeLayout.value) return
-  if (!dragNodeId.value || dragNodeId.value === toNodeId) {
+  const fromId = dragNodeId.value
+  if (!fromId || fromId === toNodeId) {
     dragNodeId.value = null
     dragOverNodeId.value = null
+    dropIntent.value = null
+    dropIndicator.value = null
     return
   }
-  emit('reorder-nodes', dragNodeId.value, toNodeId)
+
+  const intent = dropIntent.value
+
+  if (intent === 'into') {
+    // 移入容器
+    emit('move-to-container', fromId, toNodeId)
+  } else {
+    // 同层排序：判断 source 和 target 是否同层
+    const sourceNode = flatNodes.value.find((n) => n.id === fromId)
+    const targetNode = flatNodes.value.find((n) => n.id === toNodeId)
+
+    if (sourceNode && targetNode && sourceNode.parentId !== targetNode.parentId) {
+      // 跨层：先把 source 移入 target 的 parent 容器（若 target.parentId 是 '__root__' 则无法用 move-to-container）
+      // 简化处理：如果 target.parentId 不是 '__root__'，先移入容器，再排序
+      // 如果 target.parentId === '__root__'，也 emit reorder-nodes，engine 会 warn 但不会崩
+      if (targetNode.parentId !== '__root__') {
+        emit('move-to-container', fromId, targetNode.parentId)
+      } else {
+        // target 在根层，source 在容器内 → 先移出容器到根（用一个特殊的根容器 ID '__root__' 无法直接操作）
+        // 实际 engine 里 sortNodesInSchema 在找不到同层时会静默失败，这里兜底 reorder-nodes
+        emit('reorder-nodes', fromId, toNodeId, intent ?? 'before')
+      }
+    } else {
+      emit('reorder-nodes', fromId, toNodeId, intent ?? 'before')
+    }
+  }
+
   dragNodeId.value = null
   dragOverNodeId.value = null
+  dropIntent.value = null
+  dropIndicator.value = null
 }
 
 function handleResizeStart(nodeId: string, direction: string, e: MouseEvent): void {
@@ -555,10 +652,23 @@ defineExpose({
   background: rgba(103, 194, 58, 0.04);
 }
 
-/* 拖拽排序：drop 目标高亮 */
+/* 拖拽排序：drop 目标高亮（before/after） */
 .design-overlay__item--drag-over {
   border: 2px dashed #f59e0b !important;
   background: rgba(245, 158, 11, 0.08) !important;
+}
+
+/* 拖入容器：绿色边框 */
+.design-overlay__item--drag-into {
+  border: 2px dashed #67c23a !important;
+  background: rgba(103, 194, 58, 0.10) !important;
+}
+
+/* 正在被拖拽的节点：半透明 + 虚线边框 */
+.design-overlay__item--dragging {
+  opacity: 0.4;
+  border: 2px dashed #909399 !important;
+  cursor: grabbing !important;
 }
 
 /* 操作按钮区 —— 位置完全由 JS getActionsStyle() 动态控制 */
