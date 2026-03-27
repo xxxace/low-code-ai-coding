@@ -59,25 +59,40 @@
 - 单元测试 154 个全部通过（2026-03-27 下午）
 - TypeScript 零错误，Vite 构建成功
 
-## 第十六阶段：XLayout 架构演进（规划中）
+## 第十六阶段：XLayout 架构演进（进行中）
 
 详见 `D:\demo\ai\aiSpace\design\FreeLayout-Interaction-Plan.md`。
 
-### 已知 Bug（发现于 2026-03-27 下午，用户截图确认）
-1. **Bug1**：流式布局切换到自由布局，内容不渲染 → 根因：FreeLayout 用 `v-if` 过滤无 `x-free-position` 的字段
-2. **Bug2**：节点高亮和工具栏样式异常 → 根因：FreeLayout + FreeCanvas 双层 drag/resize 冲突
-3. **Bug3**：失焦后无法选中和高亮 → 根因：同 Bug2
+### XLayout 架构方案（用户确认）
 
-### XLayout 架构方案（用户确认方向）
-- **核心理念**：用 `x-position-type` 替代 `layoutMode` 全局开关，每个字段独立决定是 flow 还是 free
-- **Phase 1**：修 Bug（FreeLayout designMode 禁用 drag/resize，切换布局时补全 x-position-type）
-- **Phase 2**：创建 XLayout.vue（统一渲染层，组合 FlowLayout + FreeLayout 渲染逻辑）
-- **Phase 3**：属性面板 PositionTypeSetter（flow/free 下拉切换）
+**核心理念**：CSS position 模型，每个节点独立决定定位类型。
+- `x-position-type: 'relative'`（默认）→ 正常流式排列
+- `x-position-type: 'absolute'` → 自由定位（x/y/width/height）
+- 容器默认 position: relative，建立内部 absolute 子节点的定位上下文
+- 支持：你中有我、我中有我（卡片内自由节点、绝对容器内相对节点等）
+
+### 实施进度
+
+| 步骤 | 内容 | 状态 |
+|---|---|---|
+| Step 1 | 创建 XLayout.vue + VoidContainer 改造 | ✅ 已完成（e3ab15d） |
+| Step 2 | FormRenderer 使用 XLayout，移除 FreeCanvas/DesignOverlay | ✅ 已完成（e3ab15d） |
+| Step 3 | FreeCanvas 改造为 AbsoluteNodeOverlay（统一交互层） | ⏳ 待实现 |
+| Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 待实现 |
+| Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ⏳ 待实现 |
+
+### 关键文件
+- `renderer/XLayout.vue`（新建，统一渲染层）
+- `renderer/VoidContainer.vue`（改造，容器建立定位上下文）
+- `renderer/FormRenderer.vue`（改造，使用 XLayout 替代条件渲染）
+- `core/schema.ts`（新增 x-position-type 和 x-position 类型）
 
 ### 待实现功能（按优先级）
-1. XLayout 架构（第十六阶段）：Phase 1 修 Bug + Phase 2 XLayout + Phase 3 Setter
-2. x-relation 关系字段 UI（中）：属性面板无 Setter
-3. 其他低优先级项见 FEATURE_CHECKLIST.md
+1. Step 3: AbsoluteNodeOverlay 统一交互层（高优）
+2. Step 4: PositionTypeSetter 属性面板（高优）
+3. Step 5: 旧 Schema 迁移（layoutMode → x-position-type）
+4. x-relation 关系字段 UI（中）
+5. 其他低优先级项见 FEATURE_CHECKLIST.md
 
 ### 已否决/移除项
 - GroupRenderer.vue：已否决，由 VoidContainer 替代
