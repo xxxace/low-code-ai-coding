@@ -28,7 +28,7 @@
 |------|------|------|
 | 响应式系统 | 使用 Vue 3 原生 reactive/watchEffect | 避免两套响应式系统，减少学习成本 |
 | Schema 基础 | JSON Schema draft-07 + x-* 扩展 | 标准化，后端友好，与 Formily 部分兼容 |
-| 布局 | 双布局（flow + free）统一在一套 Schema | 避免维护两套格式，按 layoutMode 切换 |
+| 布局模式 | `x-position-type: 'flow' \| 'free'` + XLayout 统一渲染 | 取代 layoutMode 全局开关，每个字段独立决定定位类型，FlowLayout + FreeLayout 和谐共存 |
 | 关系字段 | x-relation 扩展，对接 RelationRegister | MES 业务特有需求，已有 StdForm 基础设施 |
 | 历史记录 | JSON 快照模式（snapshots[] + index） | 简单可靠，visual-drag-demo 验证过 |
 | 包结构 | 3 包 Monorepo（core/renderer/designer） | StdForm 已移除规划 |
@@ -43,7 +43,7 @@
 - 异步：async/await + try-catch
 - 禁止使用 var，禁止直接操作 DOM
 
-## 当前进度（2026-03-27，第十五阶段完成 + Bug 修复）
+## 当前进度（2026-03-27，第十五阶段完成 + Bug 修复 + 导入完成）
 
 **已完成全部功能（15 个阶段）**，详见 `FEATURE_CHECKLIST.md`。
 
@@ -59,12 +59,27 @@
 - 单元测试 154 个全部通过（2026-03-27 下午）
 - TypeScript 零错误，Vite 构建成功
 
-**待实现功能**（按优先级）：
-1. FreeLayout 完整交互（中）：拖拽移动 + 8方向缩放
+## 第十六阶段：XLayout 架构演进（规划中）
+
+详见 `D:\demo\ai\aiSpace\design\FreeLayout-Interaction-Plan.md`。
+
+### 已知 Bug（发现于 2026-03-27 下午，用户截图确认）
+1. **Bug1**：流式布局切换到自由布局，内容不渲染 → 根因：FreeLayout 用 `v-if` 过滤无 `x-free-position` 的字段
+2. **Bug2**：节点高亮和工具栏样式异常 → 根因：FreeLayout + FreeCanvas 双层 drag/resize 冲突
+3. **Bug3**：失焦后无法选中和高亮 → 根因：同 Bug2
+
+### XLayout 架构方案（用户确认方向）
+- **核心理念**：用 `x-position-type` 替代 `layoutMode` 全局开关，每个字段独立决定是 flow 还是 free
+- **Phase 1**：修 Bug（FreeLayout designMode 禁用 drag/resize，切换布局时补全 x-position-type）
+- **Phase 2**：创建 XLayout.vue（统一渲染层，组合 FlowLayout + FreeLayout 渲染逻辑）
+- **Phase 3**：属性面板 PositionTypeSetter（flow/free 下拉切换）
+
+### 待实现功能（按优先级）
+1. XLayout 架构（第十六阶段）：Phase 1 修 Bug + Phase 2 XLayout + Phase 3 Setter
 2. x-relation 关系字段 UI（中）：属性面板无 Setter
 3. 其他低优先级项见 FEATURE_CHECKLIST.md
 
-**已否决/移除项**：
+### 已否决/移除项
 - GroupRenderer.vue：已否决，由 VoidContainer 替代
 - StdForm 适配层：已从规划中移除
 - Monorepo 4包→3包（core/renderer/designer）
