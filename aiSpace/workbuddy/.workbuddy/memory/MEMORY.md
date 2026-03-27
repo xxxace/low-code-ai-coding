@@ -78,7 +78,7 @@
 | Step 0 | 移除 wrapper div，修复 containing block 语义 | ✅ 已完成（8b05669） |
 | Step 1 | 创建 XLayout.vue + VoidContainer 改造 | ✅ 已完成（e3ab15d） |
 | Step 2 | FormRenderer 使用 XLayout，移除 FreeCanvas/DesignOverlay | ✅ 已完成（e3ab15d） |
-| Step 3 | AbsoluteNodeOverlay 统一交互层 | ⏳ 待实现 |
+| Step 3 | AbsoluteNodeOverlay 统一交互层 | ✅ 已完成 |
 | Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 待实现 |
 | Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ⏳ 待实现 |
 

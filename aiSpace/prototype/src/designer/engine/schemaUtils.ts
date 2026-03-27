@@ -416,6 +416,56 @@ export function updateNodeFreeSizeById(
 }
 
 // ============================================================
+// x-position 更新（XLayout 架构使用）
+// ============================================================
+
+/**
+ * 更新 x-position 节点的 x/y 位置（用于 absolute 定位节点拖拽）
+ */
+export function updateNodePositionById(
+  properties: Record<string, FieldSchema>,
+  nodeId: string,
+  position: { x: number; y: number }
+): boolean {
+  for (const fieldSchema of Object.values(properties)) {
+    if (fieldSchema['x-id'] === nodeId) {
+      if (fieldSchema['x-position']) {
+        fieldSchema['x-position'].x = position.x
+        fieldSchema['x-position'].y = position.y
+      }
+      return true
+    }
+    if ('properties' in fieldSchema && fieldSchema.properties) {
+      if (updateNodePositionById(fieldSchema.properties, nodeId, position)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * 更新 x-position 节点的宽高（用于 absolute 定位节点缩放）
+ */
+export function updateNodeSizeById(
+  properties: Record<string, FieldSchema>,
+  nodeId: string,
+  size: { width: number; height: number }
+): boolean {
+  for (const fieldSchema of Object.values(properties)) {
+    if (fieldSchema['x-id'] === nodeId) {
+      if (fieldSchema['x-position']) {
+        fieldSchema['x-position'].width = size.width
+        fieldSchema['x-position'].height = size.height
+      }
+      return true
+    }
+    if ('properties' in fieldSchema && fieldSchema.properties) {
+      if (updateNodeSizeById(fieldSchema.properties, nodeId, size)) return true
+    }
+  }
+  return false
+}
+
+// ============================================================
 // 跨容器移动 + 排序
 // ============================================================
 

@@ -98,10 +98,18 @@
               class="canvas-renderer__preview"
             />
 
-            <!--
-              交互层已移除（Step 3 再添加统一的 AbsoluteNodeOverlay）
-              XLayout 负责渲染，AbsoluteNodeOverlay 负责交互
-            -->
+            <!-- Absolute 节点交互层（Step 3: XLayout 架构） -->
+            <AbsoluteNodeOverlay
+              v-if="currentSchema"
+              :schema="currentSchema"
+              :selected-node-id="engine.selectedNodeId.value"
+              @select-node="engine.selectNode"
+              @remove-node="handleRemoveNode"
+              @duplicate-node="handleDuplicateNode"
+              @update-node-position="handleUpdateNodePosition"
+              @update-node-size="handleUpdateNodeSize"
+              @save-snapshot="engine.saveNodePositionSnapshot"
+            />
           </div>
         </div>
       </div>
@@ -170,6 +178,7 @@ import FormRenderer from "../renderer/FormRenderer.vue";
 import MaterialPalette from "./MaterialPalette.vue";
 import PageProperties from "./PageProperties.vue";
 import FieldProperties from "./FieldProperties.vue";
+import AbsoluteNodeOverlay from "./AbsoluteNodeOverlay.vue";
 import {
   createDefaultRegistry,
   COMPONENT_REGISTRY_KEY,
@@ -286,14 +295,22 @@ function handleUpdateNodePosition(
   nodeId: string,
   updates: { x: number; y: number },
 ): void {
-  engine.updateNodeFreePosition(nodeId, updates);
+  engine.updateNodePosition(nodeId, updates);
 }
 
 function handleUpdateNodeSize(
   nodeId: string,
   updates: { width: number; height: number },
 ): void {
-  engine.updateNodeFreeSize(nodeId, updates);
+  engine.updateNodeSize(nodeId, updates);
+}
+
+function handleRemoveNode(nodeId: string): void {
+  engine.removeNode(nodeId);
+}
+
+function handleDuplicateNode(nodeId: string): void {
+  engine.duplicateNode(nodeId);
 }
 
 function handleExport(): void {

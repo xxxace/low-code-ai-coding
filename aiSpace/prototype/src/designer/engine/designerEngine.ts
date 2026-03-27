@@ -28,6 +28,8 @@ import {
   moveNodeToContainer as moveNodeToContainerUtil,
   updateNodeFreePositionById,
   updateNodeFreeSizeById,
+  updateNodePositionById,
+  updateNodeSizeById,
   moveNodeAcrossContainers as moveNodeAcrossContainersUtil,
 } from './schemaUtils'
 import { HistoryManager } from './HistoryManager'
@@ -312,6 +314,44 @@ export function useDesignerEngine() {
     saveSnapshot()
   }
 
+  /**
+   * 更新 absolute 定位节点的 x/y 位置（XLayout 架构）
+   * 注意：不记录快照，由 AbsoluteNodeOverlay 组件控制何时保存
+   */
+  function updateNodePosition(
+    nodeId: string,
+    position: { x: number; y: number }
+  ): void {
+    if (!schema.value) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+    updateNodePositionById(newSchema.schema.properties, nodeId, position)
+    schema.value = newSchema
+  }
+
+  /**
+   * 更新 absolute 定位节点的宽高（XLayout 架构）
+   * 注意：不记录快照，由 AbsoluteNodeOverlay 组件控制何时保存
+   */
+  function updateNodeSize(
+    nodeId: string,
+    size: { width: number; height: number }
+  ): void {
+    if (!schema.value) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+    updateNodeSizeById(newSchema.schema.properties, nodeId, size)
+    schema.value = newSchema
+  }
+
+  /**
+   * 保存 absolute 节点拖拽/缩放的快照（拖拽结束时调用）
+   */
+  function saveNodePositionSnapshot(): void {
+    if (!schema.value) return
+    saveSnapshot()
+  }
+
   // ============================================================
   // 当前选中节点的 Schema
   // ============================================================
@@ -382,6 +422,9 @@ const handleSubmit = (values: Record<string, any>) => {
     updateNodeProps,
     updateNodeFreePosition,
     updateNodeFreeSize,
+    updateNodePosition,
+    updateNodeSize,
+    saveNodePositionSnapshot,
     selectNode,
     exportSchema,
     generateCode,
