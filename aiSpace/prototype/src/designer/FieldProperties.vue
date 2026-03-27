@@ -20,11 +20,14 @@
 -->
 <template>
   <div class="field-properties">
-
     <!-- 字段类型标识 -->
     <div class="field-type-badge">
-      <span class="field-type-badge__name">{{ widgetMeta?.label ?? schema['x-component'] ?? '未知组件' }}</span>
-      <span class="field-type-badge__component">{{ schema['x-component'] }}</span>
+      <span class="field-type-badge__name">{{
+        widgetMeta?.label ?? schema["x-component"] ?? "未知组件"
+      }}</span>
+      <span class="field-type-badge__component">{{
+        schema["x-component"]
+      }}</span>
     </div>
 
     <!-- ① 基础属性（通用） -->
@@ -37,7 +40,11 @@
           <el-input v-model="form.description" @change="emitUpdate" />
         </el-form-item>
         <el-form-item label="值类型">
-          <el-select v-model="form.type" @change="emitUpdate" style="width:100%">
+          <el-select
+            v-model="form.type"
+            @change="emitUpdate"
+            style="width: 100%"
+          >
             <el-option label="字符串 (string)" value="string" />
             <el-option label="数字 (number)" value="number" />
             <el-option label="布尔 (boolean)" value="boolean" />
@@ -54,7 +61,14 @@
           <el-input v-model="form.defaultValue" @change="emitUpdate" />
         </el-form-item>
         <el-form-item label="占列数">
-          <el-input-number v-model="form.span" :min="1" :max="24" @change="emitUpdate" />
+          <el-slider
+            v-model="form.span"
+            :step="1"
+            :min="1"
+            :max="24"
+            show-stops
+            @change="emitUpdate"
+          />
           <div class="prop-hint">占页面布局列数中的几列</div>
         </el-form-item>
       </el-form>
@@ -64,14 +78,22 @@
     <PropGroup title="状态设置">
       <el-form label-width="72px" label-position="left" size="small">
         <el-form-item label="显示状态">
-          <el-select v-model="form.display" @change="emitUpdate" style="width:100%">
+          <el-select
+            v-model="form.display"
+            @change="emitUpdate"
+            style="width: 100%"
+          >
             <el-option label="显示" value="visible" />
             <el-option label="隐藏（保留值）" value="hidden" />
             <el-option label="不渲染" value="none" />
           </el-select>
         </el-form-item>
         <el-form-item label="交互模式">
-          <el-select v-model="form.pattern" @change="emitUpdate" style="width:100%">
+          <el-select
+            v-model="form.pattern"
+            @change="emitUpdate"
+            style="width: 100%"
+          >
             <el-option label="可编辑" value="editable" />
             <el-option label="禁用" value="disabled" />
             <el-option label="只读" value="readOnly" />
@@ -89,9 +111,11 @@
       <PropGroup :title="group.title">
         <el-form label-width="80px" label-position="left" size="small">
           <template v-for="setter in group.setters" :key="setter.key">
-
             <!-- options setter：选项编辑器 -->
-            <el-form-item v-if="setter.setter === 'options'" :label="setter.label">
+            <el-form-item
+              v-if="setter.setter === 'options'"
+              :label="setter.label"
+            >
               <OptionsEditor
                 :model-value="currentOptions"
                 @update:model-value="handleOptionsChange"
@@ -112,7 +136,10 @@
             </el-form-item>
 
             <!-- json setter -->
-            <el-form-item v-else-if="setter.setter === 'json'" :label="setter.label">
+            <el-form-item
+              v-else-if="setter.setter === 'json'"
+              :label="setter.label"
+            >
               <el-input
                 v-model="componentPropsForm[setter.key]"
                 type="textarea"
@@ -124,30 +151,41 @@
             </el-form-item>
 
             <!-- number setter -->
-            <el-form-item v-else-if="setter.setter === 'number'" :label="setter.label">
+            <el-form-item
+              v-else-if="setter.setter === 'number'"
+              :label="setter.label"
+            >
               <el-input-number
                 v-model="componentPropsForm[setter.key]"
                 :placeholder="setter.defaultValue?.toString()"
-                style="width:100%"
+                style="width: 100%"
                 @change="emitUpdate"
               />
               <div v-if="setter.tip" class="prop-hint">{{ setter.tip }}</div>
             </el-form-item>
 
             <!-- boolean setter -->
-            <el-form-item v-else-if="setter.setter === 'boolean'" :label="setter.label">
+            <el-form-item
+              v-else-if="setter.setter === 'boolean'"
+              :label="setter.label"
+            >
               <el-switch
                 v-model="componentPropsForm[setter.key]"
                 @change="emitUpdate"
               />
-              <span v-if="setter.tip" class="prop-hint ml-2">{{ setter.tip }}</span>
+              <span v-if="setter.tip" class="prop-hint ml-2">{{
+                setter.tip
+              }}</span>
             </el-form-item>
 
             <!-- select setter -->
-            <el-form-item v-else-if="setter.setter === 'select'" :label="setter.label">
+            <el-form-item
+              v-else-if="setter.setter === 'select'"
+              :label="setter.label"
+            >
               <el-select
                 v-model="componentPropsForm[setter.key]"
-                style="width:100%"
+                style="width: 100%"
                 @change="emitUpdate"
               >
                 <el-option
@@ -159,7 +197,6 @@
               </el-select>
               <div v-if="setter.tip" class="prop-hint">{{ setter.tip }}</div>
             </el-form-item>
-
           </template>
         </el-form>
       </PropGroup>
@@ -174,7 +211,7 @@
           <template v-else>共 {{ form.reactions.length }} 条规则</template>
         </span>
         <el-button size="small" type="primary" text @click="openReactionDialog">
-          {{ form.reactions.length === 0 ? '+ 添加' : '编辑' }}
+          {{ form.reactions.length === 0 ? "+ 添加" : "编辑" }}
         </el-button>
       </div>
       <!-- 规则摘要卡片（只读展示，每条一行） -->
@@ -184,9 +221,11 @@
         class="reaction-chip"
         :class="{ 'reaction-chip--disabled': r.enabled === false }"
       >
-        <span class="reaction-chip__when">{{ r.when || '始终' }}</span>
+        <span class="reaction-chip__when">{{ r.when || "始终" }}</span>
         <span class="reaction-chip__arrow">→</span>
-        <span class="reaction-chip__fulfill">{{ reactionFulfillLabel(r) }}</span>
+        <span class="reaction-chip__fulfill">{{
+          reactionFulfillLabel(r)
+        }}</span>
       </div>
     </PropGroup>
 
@@ -201,127 +240,142 @@
     <PropGroup title="校验规则">
       <el-form label-width="72px" label-position="left" size="small">
         <el-form-item label="最小长度">
-          <el-input-number v-model="form.minLength" :min="0" @change="emitUpdate" />
+          <el-input-number
+            v-model="form.minLength"
+            :min="0"
+            @change="emitUpdate"
+          />
         </el-form-item>
         <el-form-item label="最大长度">
-          <el-input-number v-model="form.maxLength" :min="0" @change="emitUpdate" />
+          <el-input-number
+            v-model="form.maxLength"
+            :min="0"
+            @change="emitUpdate"
+          />
         </el-form-item>
       </el-form>
     </PropGroup>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, inject } from 'vue'
-import type { FieldSchema, Reaction } from '../types/schema'
-import { COMPONENT_REGISTRY_KEY, type ComponentRegistry, type PropSetterGroup } from '../types/componentRegistry'
-import PropGroup from './PropGroup.vue'
-import OptionsEditor from './OptionsEditor.vue'
-import ReactionEditorDialog from './ReactionEditorDialog.vue'
+import { reactive, ref, computed, watch, inject } from "vue";
+import type { FieldSchema, Reaction } from "../types/schema";
+import {
+  COMPONENT_REGISTRY_KEY,
+  type ComponentRegistry,
+  type PropSetterGroup,
+} from "../types/componentRegistry";
+import PropGroup from "./PropGroup.vue";
+import OptionsEditor from "./OptionsEditor.vue";
+import ReactionEditorDialog from "./ReactionEditorDialog.vue";
 
 // ============================================================
 // Props & Emits
 // ============================================================
 
 interface Props {
-  schema: FieldSchema
-  nodeId: string
+  schema: FieldSchema;
+  nodeId: string;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 const emit = defineEmits<{
-  (e: 'update', nodeId: string, updates: Partial<FieldSchema>): void
-}>()
+  (e: "update", nodeId: string, updates: Partial<FieldSchema>): void;
+}>();
 
 // ============================================================
 // 注入 Registry，读取 propSetters
 // ============================================================
 
-const registry = inject<ComponentRegistry>(COMPONENT_REGISTRY_KEY)
+const registry = inject<ComponentRegistry>(COMPONENT_REGISTRY_KEY);
 
 const widgetMeta = computed(() => {
-  const component = props.schema['x-component']
-  if (!component || !registry) return null
-  return registry.getWidgetMeta(component)
-})
+  const component = props.schema["x-component"];
+  if (!component || !registry) return null;
+  return registry.getWidgetMeta(component);
+});
 
 const propSetterGroups = computed<PropSetterGroup[]>(() => {
-  return widgetMeta.value?.propSetters ?? []
-})
+  return widgetMeta.value?.propSetters ?? [];
+});
 
 // ============================================================
 // 通用属性 form
 // ============================================================
 
 const form = reactive({
-  title: props.schema.title ?? '',
-  description: props.schema.description ?? '',
-  type: props.schema.type ?? 'string',
-  placeholder: props.schema['x-component-props']?.placeholder ?? '',
-  defaultValue: props.schema.default != null ? String(props.schema.default) : '',
-  span: props.schema['x-span'] ?? 1,
-  display: props.schema['x-display'] ?? 'visible',
-  pattern: props.schema['x-pattern'] ?? 'editable',
+  title: props.schema.title ?? "",
+  description: props.schema.description ?? "",
+  type: props.schema.type ?? "string",
+  placeholder: props.schema["x-component-props"]?.placeholder ?? "",
+  defaultValue:
+    props.schema.default != null ? String(props.schema.default) : "",
+  span: props.schema["x-span"] ?? 1,
+  display: props.schema["x-display"] ?? "visible",
+  pattern: props.schema["x-pattern"] ?? "editable",
   required: props.schema.required === true,
-  minLength: props.schema.minLength ?? null as number | null,
-  maxLength: props.schema.maxLength ?? null as number | null,
-  reactions: (props.schema['x-reactions'] ?? []) as Reaction[],
-})
+  minLength: props.schema.minLength ?? (null as number | null),
+  maxLength: props.schema.maxLength ?? (null as number | null),
+  reactions: (props.schema["x-reactions"] ?? []) as Reaction[],
+});
 
 // ============================================================
 // 组件专属属性 form（动态，对应 x-component-props 里的 key）
 // ============================================================
 
-const componentPropsForm = reactive<Record<string, any>>(
-  { ...(props.schema['x-component-props'] ?? {}) }
-)
+const componentPropsForm = reactive<Record<string, any>>({
+  ...(props.schema["x-component-props"] ?? {}),
+});
 
 // ============================================================
 // 选项编辑（Select / CheckboxGroup / RadioGroup 的 enum/enumNames）
 // ============================================================
 
-interface OptionItem { label: string; value: string }
+interface OptionItem {
+  label: string;
+  value: string;
+}
 
 const currentOptions = computed<OptionItem[]>(() => {
-  const enumVals = (props.schema.enum ?? []) as any[]
-  const enumNames = (props.schema.enumNames ?? []) as string[]
+  const enumVals = (props.schema.enum ?? []) as any[];
+  const enumNames = (props.schema.enumNames ?? []) as string[];
   return enumVals.map((v, i) => ({
     value: String(v),
     label: enumNames[i] ?? String(v),
-  }))
-})
+  }));
+});
 
 function handleOptionsChange(options: OptionItem[]) {
-  emit('update', props.nodeId, {
+  emit("update", props.nodeId, {
     enum: options.map((o) => o.value),
     enumNames: options.map((o) => o.label),
-  })
+  });
 }
 
 // ============================================================
 // 联动规则 —— 弹窗模式
 // ============================================================
 
-const reactionDialogVisible = ref(false)
+const reactionDialogVisible = ref(false);
 
 function openReactionDialog() {
-  reactionDialogVisible.value = true
+  reactionDialogVisible.value = true;
 }
 
 function handleReactionConfirm(reactions: Reaction[]) {
-  form.reactions = reactions
-  emitUpdate()
+  form.reactions = reactions;
+  emitUpdate();
 }
 
 /** 规则摘要文字（只读展示用） */
 function reactionFulfillLabel(r: Reaction): string {
-  if (r.enabled === false) return '（已禁用）'
-  const state = r.fulfill?.state ?? {}
-  if ('visible' in state) return state.visible ? '显示' : '隐藏'
-  if ('disabled' in state) return state.disabled ? '禁用字段' : '恢复可编辑'
-  if ('required' in state) return state.required ? '必填' : '取消必填'
-  return '—'
+  if (r.enabled === false) return "（已禁用）";
+  const state = r.fulfill?.state ?? {};
+  if ("visible" in state) return state.visible ? "显示" : "隐藏";
+  if ("disabled" in state) return state.disabled ? "禁用字段" : "恢复可编辑";
+  if ("required" in state) return state.required ? "必填" : "取消必填";
+  return "—";
 }
 
 // ============================================================
@@ -329,40 +383,51 @@ function reactionFulfillLabel(r: Reaction): string {
 // ============================================================
 
 const hasPlaceholder = computed(() => {
-  const comp = props.schema['x-component'] ?? ''
-  return ['Input', 'Textarea', 'Password', 'Select', 'DatePicker', 'DateRangePicker',
-    'TimePicker', 'DateTimePicker', 'Cascader', 'TreeSelect', 'InputNumber'].includes(comp)
-})
+  const comp = props.schema["x-component"] ?? "";
+  return [
+    "Input",
+    "Textarea",
+    "Password",
+    "Select",
+    "DatePicker",
+    "DateRangePicker",
+    "TimePicker",
+    "DateTimePicker",
+    "Cascader",
+    "TreeSelect",
+    "InputNumber",
+  ].includes(comp);
+});
 
 // ============================================================
 // 监听 schema 变化（切换选中节点时刷新面板）
 // ============================================================
 
-  watch(
+watch(
   () => props.schema,
   (schema) => {
-    form.title = schema.title ?? ''
-    form.description = schema.description ?? ''
-    form.type = schema.type ?? 'string'
-    form.placeholder = schema['x-component-props']?.placeholder ?? ''
-    form.defaultValue = schema.default != null ? String(schema.default) : ''
-    form.span = schema['x-span'] ?? 1
-    form.display = schema['x-display'] ?? 'visible'
-    form.pattern = schema['x-pattern'] ?? 'editable'
-    form.required = schema.required === true
-    form.reactions = (schema['x-reactions'] ?? []) as Reaction[]
-    form.minLength = schema.minLength ?? null
-    form.maxLength = schema.maxLength ?? null
+    form.title = schema.title ?? "";
+    form.description = schema.description ?? "";
+    form.type = schema.type ?? "string";
+    form.placeholder = schema["x-component-props"]?.placeholder ?? "";
+    form.defaultValue = schema.default != null ? String(schema.default) : "";
+    form.span = schema["x-span"] ?? 1;
+    form.display = schema["x-display"] ?? "visible";
+    form.pattern = schema["x-pattern"] ?? "editable";
+    form.required = schema.required === true;
+    form.reactions = (schema["x-reactions"] ?? []) as Reaction[];
+    form.minLength = schema.minLength ?? null;
+    form.maxLength = schema.maxLength ?? null;
 
     // 同步 componentPropsForm
-    const cp = schema['x-component-props'] ?? {}
+    const cp = schema["x-component-props"] ?? {};
     for (const key of Object.keys(componentPropsForm)) {
-      delete componentPropsForm[key]
+      delete componentPropsForm[key];
     }
-    Object.assign(componentPropsForm, cp)
+    Object.assign(componentPropsForm, cp);
   },
-  { deep: true }
-)
+  { deep: true },
+);
 
 // ============================================================
 // emit update
@@ -370,36 +435,36 @@ const hasPlaceholder = computed(() => {
 
 function emitUpdate() {
   // 合并 componentPropsForm，排除 __options__（由 OptionsEditor 单独处理）
-  const mergedComponentProps: Record<string, any> = {}
+  const mergedComponentProps: Record<string, any> = {};
   for (const [k, v] of Object.entries(componentPropsForm)) {
-    if (k === '__options__') continue
-    if (v !== null && v !== undefined && v !== '') {
-      mergedComponentProps[k] = v
+    if (k === "__options__") continue;
+    if (v !== null && v !== undefined && v !== "") {
+      mergedComponentProps[k] = v;
     }
   }
   // 保留 placeholder 来源：优先 componentPropsForm.placeholder，其次 form.placeholder
-  if (form.placeholder) mergedComponentProps.placeholder = form.placeholder
+  if (form.placeholder) mergedComponentProps.placeholder = form.placeholder;
 
   const updates = {
     title: form.title,
     description: form.description,
-    type: form.type as FieldSchema['type'],
+    type: form.type as FieldSchema["type"],
     default: form.defaultValue || undefined,
-    'x-span': form.span,
-    'x-display': form.display,
-    'x-pattern': form.pattern,
+    "x-span": form.span,
+    "x-display": form.display,
+    "x-pattern": form.pattern,
     required: form.required,
-    'x-reactions': form.reactions,
-    'x-component-props': {
-      ...(props.schema['x-component-props'] ?? {}),
+    "x-reactions": form.reactions,
+    "x-component-props": {
+      ...(props.schema["x-component-props"] ?? {}),
       ...mergedComponentProps,
     },
-  } as Partial<FieldSchema>
+  } as Partial<FieldSchema>;
 
-  if (form.minLength !== null) updates.minLength = form.minLength
-  if (form.maxLength !== null) updates.maxLength = form.maxLength
+  if (form.minLength !== null) updates.minLength = form.minLength;
+  if (form.maxLength !== null) updates.maxLength = form.maxLength;
 
-  emit('update', props.nodeId, updates)
+  emit("update", props.nodeId, updates);
 }
 </script>
 

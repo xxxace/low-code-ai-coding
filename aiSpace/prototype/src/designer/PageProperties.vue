@@ -9,7 +9,12 @@
         <el-input v-model="form.name" @change="handleChange" />
       </el-form-item>
       <el-form-item label="标签宽度">
-        <el-input-number v-model="form.labelWidth" :min="60" :max="300" @change="handleChange" />
+        <el-input-number
+          v-model="form.labelWidth"
+          :min="60"
+          :max="300"
+          @change="handleChange"
+        />
       </el-form-item>
       <el-form-item label="标签位置">
         <el-select v-model="form.labelPosition" @change="handleChange">
@@ -19,14 +24,16 @@
         </el-select>
       </el-form-item>
       <el-form-item label="布局列数">
-        <div class="columns-row">
-          <!-- 快捷选项 -->
-          <el-radio-group v-model="form.columns" size="small" @change="handleChange">
-            <el-radio-button :value="1">1</el-radio-button>
-            <el-radio-button :value="2">2</el-radio-button>
-            <el-radio-button :value="3">3</el-radio-button>
-            <el-radio-button :value="4">4</el-radio-button>
-          </el-radio-group>
+        <!-- 快捷选项 -->
+        <div style="flex: 1">
+          <el-slider
+            v-model="form.columns"
+            :step="1"
+            :min="1"
+            :max="24"
+            show-stops
+            @change="handleChange"
+          />
           <!-- 自定义列数输入 -->
           <el-input-number
             v-model="form.columns"
@@ -38,7 +45,10 @@
             @change="handleChange"
           />
         </div>
-        <div class="columns-hint">当前 {{ form.columns }} 列，字段宽度 = x-span / {{ form.columns }}</div>
+
+        <div class="columns-hint">
+          当前 {{ form.columns }} 列，字段宽度 = x-span / {{ form.columns }}
+        </div>
       </el-form-item>
       <el-form-item label="布局类型">
         <el-select v-model="form.layoutType" @change="handleChange">
@@ -53,7 +63,9 @@
     <div class="page-tips">
       <div class="page-tips__title">快速操作</div>
       <div class="page-tips__list">
-        <div class="page-tips__item">点击字段 → 右侧面板调整 x-span（占列数）</div>
+        <div class="page-tips__item">
+          点击字段 → 右侧面板调整 x-span（占列数）
+        </div>
         <div class="page-tips__item">拖拽字段可排序</div>
         <div class="page-tips__item">Delete 键删除选中字段</div>
         <div class="page-tips__item">Ctrl+Z / Ctrl+Y 撤销重做</div>
@@ -63,36 +75,40 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
-import type { PageSchema } from '../types/schema'
+import { reactive, watch } from "vue";
+import type { PageSchema } from "../types/schema";
 
 interface Props {
-  schema: PageSchema
+  schema: PageSchema;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 const emit = defineEmits<{
-  (e: 'update', updates: Partial<PageSchema>): void
-}>()
+  (e: "update", updates: Partial<PageSchema>): void;
+}>();
 
 const form = reactive({
   name: props.schema.name,
   labelWidth: props.schema.formConfig.labelWidth ?? 100,
-  labelPosition: props.schema.formConfig.labelPosition ?? 'top',
-  layoutType: props.schema.formConfig.layoutType ?? 'PC',
+  labelPosition: props.schema.formConfig.labelPosition ?? "top",
+  layoutType: props.schema.formConfig.layoutType ?? "PC",
   columns: props.schema.formConfig.columns ?? 1,
-})
+});
 
-watch(() => props.schema, (schema) => {
-  form.name = schema.name
-  form.labelWidth = schema.formConfig.labelWidth ?? 100
-  form.labelPosition = schema.formConfig.labelPosition ?? 'top'
-  form.layoutType = schema.formConfig.layoutType ?? 'PC'
-  form.columns = schema.formConfig.columns ?? 1
-}, { deep: true })
+watch(
+  () => props.schema,
+  (schema) => {
+    form.name = schema.name;
+    form.labelWidth = schema.formConfig.labelWidth ?? 100;
+    form.labelPosition = schema.formConfig.labelPosition ?? "top";
+    form.layoutType = schema.formConfig.layoutType ?? "PC";
+    form.columns = schema.formConfig.columns ?? 1;
+  },
+  { deep: true },
+);
 
 function handleChange() {
-  emit('update', {
+  emit("update", {
     name: form.name,
     formConfig: {
       ...props.schema.formConfig,
@@ -101,7 +117,7 @@ function handleChange() {
       layoutType: form.layoutType,
       columns: form.columns,
     },
-  })
+  });
 }
 </script>
 
@@ -156,7 +172,7 @@ function handleChange() {
 }
 
 .page-tips__item::before {
-  content: '·';
+  content: "·";
   position: absolute;
   left: 0;
 }

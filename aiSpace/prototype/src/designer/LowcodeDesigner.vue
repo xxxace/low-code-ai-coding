@@ -121,7 +121,10 @@
                   (nodeId, dir) => engine.moveNode(nodeId, dir as 'up' | 'down')
                 "
                 @reorder-nodes="
-                  (fromId, toId) => engine.sortNodes(fromId, toId, 'before')
+                  (fromId, toId, position) => engine.sortNodes(fromId, toId, position)
+                "
+                @move-to-container="
+                  (nodeId, containerId) => engine.moveNodeToContainer(nodeId, containerId)
                 "
               />
             </template>
