@@ -165,46 +165,36 @@
       </PropGroup>
     </template>
 
-    <!-- ④ 联动规则 -->
+    <!-- ④ 联动规则（摘要 + 弹窗编辑） -->
     <PropGroup title="联动规则">
-      <div v-if="form.reactions.length === 0" class="text-gray-400 text-xs px-2 pb-2">
-        暂无联动规则
+      <!-- 摘要行 -->
+      <div class="reaction-summary">
+        <span class="reaction-summary__count">
+          <template v-if="form.reactions.length === 0">暂无规则</template>
+          <template v-else>共 {{ form.reactions.length }} 条规则</template>
+        </span>
+        <el-button size="small" type="primary" text @click="openReactionDialog">
+          {{ form.reactions.length === 0 ? '+ 添加' : '编辑' }}
+        </el-button>
       </div>
-      <div v-for="(reaction, idx) in form.reactions" :key="idx" class="reaction-item">
-        <div class="reaction-item__header">
-          <span class="text-xs text-gray-500">规则 {{ idx + 1 }}</span>
-          <el-button size="small" text type="danger" @click="removeReaction(idx)">删除</el-button>
-        </div>
-        <el-form label-width="56px" label-position="left" size="small">
-          <el-form-item label="依赖">
-            <el-input
-              v-model="reactionDepsInput[idx]"
-              placeholder="字段路径，逗号分隔"
-              @change="updateReactionDeps(idx, $event)"
-            />
-          </el-form-item>
-          <el-form-item label="条件">
-            <el-input
-              v-model="reaction.when"
-              placeholder="如：$deps[0] === true"
-              @change="emitUpdate"
-            />
-          </el-form-item>
-          <el-form-item label="结果">
-            <el-select v-model="reactionFulfillType[idx]" size="small" style="width:100%" @change="updateReactionFulfill(idx)">
-              <el-option label="设置显示" value="visible" />
-              <el-option label="设置隐藏" value="hidden" />
-              <el-option label="设置禁用" value="disabled" />
-              <el-option label="设置只读" value="readOnly" />
-              <el-option label="设置必填" value="required" />
-            </el-select>
-          </el-form-item>
-        </el-form>
+      <!-- 规则摘要卡片（只读展示，每条一行） -->
+      <div
+        v-for="(r, idx) in form.reactions"
+        :key="idx"
+        class="reaction-chip"
+      >
+        <span class="reaction-chip__when">{{ r.when || '始终' }}</span>
+        <span class="reaction-chip__arrow">→</span>
+        <span class="reaction-chip__fulfill">{{ reactionFulfillLabel(r) }}</span>
       </div>
-      <el-button size="small" class="mt-2 w-full" @click="addReaction">
-        + 添加联动规则
-      </el-button>
     </PropGroup>
+
+    <!-- 联动规则编辑弹窗 -->
+    <ReactionEditorDialog
+      v-model="reactionDialogVisible"
+      :reactions="form.reactions"
+      @confirm="handleReactionConfirm"
+    />
 
     <!-- ⑤ 校验规则 -->
     <PropGroup title="校验规则">
@@ -227,6 +217,7 @@ import type { FieldSchema, Reaction } from '../types/schema'
 import { COMPONENT_REGISTRY_KEY, type ComponentRegistry, type PropSetterGroup } from '../types/componentRegistry'
 import PropGroup from './PropGroup.vue'
 import OptionsEditor from './OptionsEditor.vue'
+import ReactionEditorDialog from './ReactionEditorDialog.vue'
 
 // ============================================================
 // Props & Emits
@@ -308,68 +299,35 @@ function handleOptionsChange(options: OptionItem[]) {
 }
 
 // ============================================================
-// 联动规则
+// 联动规则 —— 弹窗模式
 // ============================================================
 
-const reactionDepsInput = ref<string[]>(
-  form.reactions.map((r) => r.dependencies?.join(', ') ?? '')
-)
+const reactionDialogVisible = ref(false)
 
-/** 联动结果类型（简化：只支持 visible/hidden/disabled/readOnly/required） */
-const reactionFulfillType = ref<string[]>(
-  form.reactions.map((r) => {
-    const state = r.fulfill?.state ?? {}
-    if ('visible' in state) return state.visible ? 'visible' : 'hidden'
-    if ('pattern' in state) return state.pattern as string
-    if ('required' in state) return 'required'
-    return 'visible'
-  })
-)
+function openReactionDialog() {
+  reactionDialogVisible.value = true
+}
 
-function addReaction() {
-  form.reactions.push({
-    dependencies: [],
-    when: '',
-    fulfill: { state: { visible: true } },
-    otherwise: { state: { visible: false } },
-  })
-  reactionDepsInput.value.push('')
-  reactionFulfillType.value.push('visible')
+function handleReactionConfirm(reactions: Reaction[]) {
+  form.reactions = reactions
   emitUpdate()
 }
 
-function removeReaction(idx: number) {
-  form.reactions.splice(idx, 1)
-  reactionDepsInput.value.splice(idx, 1)
-  reactionFulfillType.value.splice(idx, 1)
-  emitUpdate()
-}
-
-function updateReactionDeps(idx: number, value: string) {
-  form.reactions[idx].dependencies = value.split(',').map((s) => s.trim()).filter(Boolean)
-  emitUpdate()
-}
-
-function updateReactionFulfill(idx: number) {
-  const type = reactionFulfillType.value[idx]
-  if (type === 'visible') {
-    // 满足条件 → 显示；不满足 → 隐藏（自动补 otherwise，确保初始状态正确）
-    form.reactions[idx].fulfill = { state: { visible: true } }
-    form.reactions[idx].otherwise = { state: { visible: false } }
-  } else if (type === 'hidden') {
-    form.reactions[idx].fulfill = { state: { visible: false } }
-    form.reactions[idx].otherwise = { state: { visible: true } }
-  } else if (type === 'disabled') {
-    form.reactions[idx].fulfill = { state: { pattern: 'disabled' } }
-    form.reactions[idx].otherwise = { state: { pattern: 'editable' } }
-  } else if (type === 'readOnly') {
-    form.reactions[idx].fulfill = { state: { pattern: 'readOnly' } }
-    form.reactions[idx].otherwise = { state: { pattern: 'editable' } }
-  } else if (type === 'required') {
-    form.reactions[idx].fulfill = { state: { required: true } }
-    form.reactions[idx].otherwise = { state: { required: false } }
+/** 规则摘要文字（只读展示用） */
+function reactionFulfillLabel(r: Reaction): string {
+  const state = r.fulfill?.state ?? {}
+  if ('visible' in state) return state.visible ? '显示' : '隐藏'
+  if ('pattern' in state) {
+    const map: Record<string, string> = {
+      disabled: '禁用',
+      readOnly: '只读',
+      editable: '可编辑',
+      readPretty: '阅读态',
+    }
+    return map[state.pattern as string] ?? state.pattern as string
   }
-  emitUpdate()
+  if ('required' in state) return state.required ? '必填' : '非必填'
+  return '—'
 }
 
 // ============================================================
@@ -401,14 +359,6 @@ const hasPlaceholder = computed(() => {
     form.reactions = (schema['x-reactions'] ?? []) as Reaction[]
     form.minLength = schema.minLength ?? null
     form.maxLength = schema.maxLength ?? null
-    reactionDepsInput.value = form.reactions.map((r) => r.dependencies?.join(', ') ?? '')
-    reactionFulfillType.value = form.reactions.map((r) => {
-      const state = r.fulfill?.state ?? {}
-      if ('visible' in state) return state.visible ? 'visible' : 'hidden'
-      if ('pattern' in state) return state.pattern as string
-      if ('required' in state) return 'required'
-      return 'visible'
-    })
 
     // 同步 componentPropsForm
     const cp = schema['x-component-props'] ?? {}
@@ -500,28 +450,50 @@ function emitUpdate() {
   margin-left: 8px;
 }
 
-/* 联动规则 */
-.reaction-item {
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  padding: 8px;
-  margin-bottom: 8px;
-}
-
-.reaction-item__header {
+/* 联动规则摘要区 */
+.reaction-summary {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 6px;
+}
+
+.reaction-summary__count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.reaction-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 4px 8px;
   margin-bottom: 4px;
+  font-size: 11px;
+  overflow: hidden;
 }
 
-.mt-2 {
-  margin-top: 8px;
+.reaction-chip__when {
+  color: #606266;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
 }
 
-.w-full {
-  width: 100%;
+.reaction-chip__arrow {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.reaction-chip__fulfill {
+  color: #409eff;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .text-xs {

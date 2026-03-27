@@ -104,6 +104,11 @@ TypeScript 类型检查：零错误
 - ✅ undo/redo 按钮：HistoryManager 加 `indexRef: Ref<number>` 响应式副本，canUndo/canRedo computed 依赖它，彻底解决 class getter 不被 Vue 追踪的问题
 - ✅ 属性面板值类型：FieldProperties 基础属性区新增「值类型」下拉（string/number/boolean/array/object/integer）
 
+## 第十三阶段（2026-03-27）：联动规则体验重构
+
+- ✅ 新建 `ReactionEditorDialog.vue`：联动规则编辑弹窗，直接编辑 `when` 表达式字符串（不区分 $self/$deps），支持目标字段（target）输入
+- ✅ `FieldProperties` 联动规则区改为摘要模式：「共 N 条规则 + 编辑按钮」+ 每条一行只读摘要卡片（when → 效果），不再内联展开
+
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
 - 编写单元测试（ReactionsEngine、FormModel）
