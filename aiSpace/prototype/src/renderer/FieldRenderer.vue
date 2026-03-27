@@ -14,8 +14,23 @@
   - readPretty 模式（只读显示态）单独渲染文本
 -->
 <template>
+  <!-- ── ContainerNode 占位 ────────────────────────────────────────────
+       type='container' 的节点由 GroupRenderer 渲染（TODO: 待实现）。
+       此处仅渲染一个占位 div，保留 slot 供父级注入子字段。
+  ─────────────────────────────────────────────────────────────────── -->
+  <template v-if="(schema as any).type === 'container'">
+    <div
+      class="lowcode-container-placeholder"
+      :data-container-id="(schema as any)['x-id']"
+      :data-container-variant="(schema as any)['x-container-variant'] ?? 'group'"
+    >
+      <!-- TODO: <GroupRenderer :node="(schema as ContainerNode)" :form-model="formModel" /> -->
+      <slot />
+    </div>
+  </template>
+
   <!-- display = none：完全不渲染（设计模式下忽略此状态，强制可见）-->
-  <template v-if="designMode || fieldState?.display !== 'none'">
+  <template v-else-if="designMode || fieldState?.display !== 'none'">
     <!-- display = hidden：占位但不显示（设计模式下改为虚显，有占位但半透明） -->
     <div
       v-show="designMode || fieldState?.display !== 'hidden'"
@@ -146,6 +161,7 @@ import {
   ElTooltip,
   ElIcon,
   ElFormItem,
+  type FormItemRule,
 } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import type { FieldSchema } from '../types/schema'
@@ -222,8 +238,8 @@ const fieldWrapperClass = computed(() => {
 
 const isRequired = computed(() => {
   return (
-    decoratorProps.value.required ??
-    props.schema.required === true ??
+    decoratorProps.value.required ||
+    props.schema.required === true ||
     false
   )
 })
@@ -317,7 +333,7 @@ const fieldValue = computed({
 // el-form 校验规则适配（交由 el-form 的原生校验机制）
 // ============================================================
 
-const elFormRules = computed(() => {
+const elFormRules = computed<FormItemRule[]>(() => {
   const validators = props.schema['x-validator']
   if (!validators?.length) return []
 
@@ -409,5 +425,15 @@ const elFormRules = computed(() => {
   font-size: 12px;
   color: #909399;
   line-height: 1.4;
+}
+
+/** ContainerNode 占位（GroupRenderer 实现后替换） */
+.lowcode-container-placeholder {
+  width: 100%;
+  min-height: 32px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 4px;
+  padding: 4px;
+  box-sizing: border-box;
 }
 </style>

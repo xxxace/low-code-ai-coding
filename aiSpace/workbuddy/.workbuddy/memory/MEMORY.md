@@ -1,5 +1,9 @@
 # 长期记忆
 
+## 功能清单档案
+
+- **完整功能进度清单**：`D:\demo\ai\aiSpace\FEATURE_CHECKLIST.md`（已完成/骨架在/待实现/已知问题/ADR/目录结构，session 开始时可直接读取）
+
 ## 工作空间信息
 
 - 工作空间：`D:\demo\ai\aiSpace\workbuddy`
@@ -111,8 +115,52 @@ TypeScript 类型检查：零错误
 - ✅ `ReactionEditorDialog` 升级为三区布局：顶栏搜索+新增、左侧规则名称列表（颜色徽章+条件预览）、右侧详情编辑（名称/备注/条件/依赖/目标/效果）；schema.ts Reaction 新增 name/remark 字段
 - ✅ 规则启用/禁用机制：Reaction 接口加 `enabled?: boolean`；引擎 `_executeReaction` 跳过 enabled===false 的规则；左侧徽章改为绿=启用/灰=禁用；右侧顶部加 toggle 按钮；效果类型精简（去掉只读，保留显示/隐藏/禁用字段/必填/取消必填）
 
+## 第十四阶段（2026-03-27）：架构重构 —— core/ 分层 + 垫片兼容
+
+### 新目录结构
+```
+src/
+  core/
+    schema.ts          # Schema 定义（新增 I18nString/ContainerNode/SchemaNode/DataSourceConfig）
+    model.ts           # FormModel
+    reactions.ts       # ReactionsEngine（SANDBOX_BLOCKED_GLOBALS 消除三处重复）
+    registry/
+      registryTypes.ts # 纯类型：WidgetMeta/FunctionRegistry（逃生舱占位）
+      ComponentRegistry.ts  # 注册表核心类
+      defaultRegistry.ts    # Element Plus 20+ 组件默认注册
+      index.ts         # re-export
+  designer/
+    engine/
+      schemaUtils.ts   # 8个纯函数（可独立单元测试）
+      HistoryManager.ts
+      designerEngine.ts # 精简为 ~280 行（委托给 schemaUtils）
+      designerBus.ts   # mitt 事件总线（DesignerEvents）
+    composables/
+      useMaterialDrag.ts
+      useKeyboardShortcuts.ts
+  types/               # 垫片层：4 个文件均为 export * from '../core/xxx'
+  renderer/
+    FieldRenderer.vue  # 新增 ContainerNode 占位分支（type='container'）
+  index.ts             # 更新为从 core/ 导出，新增所有新类型和 schemaUtils/designerBus
+  plugin-api.d.ts      # 纯类型插件 API 契约
+```
+
+### 关键决策
+- **垫片模式**：`types/` 4 个文件全部改为 `export * from '../core/xxx'`，现有 import 不需要改
+- **单向依赖链**：core → renderer → designer，core 不依赖 designer
+- **ContainerNode**：Schema 树支持容器节点（无限嵌套），FieldRenderer 加占位分支
+- **I18nString**：`{ zh: string; en?: string }` + `resolveLocalizedString()` 工具函数
+- **FunctionRegistry**：接口占位，为"用户写 setup 函数"逃生舱预留
+- **designerBus**：基于 mitt，为插件体系打地基
+- **plugin-api.d.ts**：插件 API 契约，零运行时代价
+
+### 构建状态
+- TypeScript tsc --noEmit：零错误
+- vite build：✅ 成功（1663 模块，仅有 chunk size 警告，非错误）
+
 下一步（第四阶段候选）：
 - 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
-- 编写单元测试（ReactionsEngine、FormModel）
+- 编写单元测试（ReactionsEngine、FormModel、schemaUtils）
 - FreeLayout 的拖拽移动 + 8方向缩放（deskclaw 已调研方案，可直接实现）
 - ComponentRegistry 的懒加载支持（代码分割）
+- GroupRenderer.vue 实现（ContainerNode 正式渲染）

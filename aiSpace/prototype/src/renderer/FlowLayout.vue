@@ -51,6 +51,7 @@ import VoidContainer from './VoidContainer.vue'
 
 interface Props {
   properties: Record<string, FieldSchema>
+  /** 模板传入时为 FormModel 实例或 null（ref 在模板中自动解包） */
   formModel?: FormModel | null
   pathPrefix: string
   /**

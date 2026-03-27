@@ -380,7 +380,7 @@ function emitUpdate() {
   // 保留 placeholder 来源：优先 componentPropsForm.placeholder，其次 form.placeholder
   if (form.placeholder) mergedComponentProps.placeholder = form.placeholder
 
-  const updates: Partial<FieldSchema> = {
+  const updates = {
     title: form.title,
     description: form.description,
     type: form.type as FieldSchema['type'],
@@ -394,7 +394,7 @@ function emitUpdate() {
       ...(props.schema['x-component-props'] ?? {}),
       ...mergedComponentProps,
     },
-  }
+  } as Partial<FieldSchema>
 
   if (form.minLength !== null) updates.minLength = form.minLength
   if (form.maxLength !== null) updates.maxLength = form.maxLength

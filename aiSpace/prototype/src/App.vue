@@ -20,14 +20,14 @@
 
       <!-- 设计器 -->
       <div v-if="activeTab === 'designer'" class="app__content">
-        <LowcodeDesigner
-          :initial-schema="demoSchema"
-          @export="handleExport"
-        />
+        <LowcodeDesigner :initial-schema="demoSchema" @export="handleExport" />
       </div>
 
       <!-- 渲染器演示 -->
-      <div v-else-if="activeTab === 'renderer'" class="app__content app__content--padded">
+      <div
+        v-else-if="activeTab === 'renderer'"
+        class="app__content app__content--padded"
+      >
         <div class="demo-renderer">
           <div class="demo-renderer__form">
             <h3 class="demo-section-title">表单预览（带联动示例）</h3>
@@ -52,200 +52,204 @@
       </div>
 
       <!-- Schema JSON 查看 -->
-      <div v-else-if="activeTab === 'json'" class="app__content app__content--padded">
+      <div
+        v-else-if="activeTab === 'json'"
+        class="app__content app__content--padded"
+      >
         <h3 class="demo-section-title">当前 Schema JSON</h3>
-        <pre class="schema-json-preview">{{ JSON.stringify(demoSchema, null, 2) }}</pre>
+        <pre class="schema-json-preview">{{
+          JSON.stringify(demoSchema, null, 2)
+        }}</pre>
       </div>
     </div>
   </el-config-provider>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-import { ElMessage } from 'element-plus'
-import LowcodeDesigner from './designer/LowcodeDesigner.vue'
-import FormRenderer from './renderer/FormRenderer.vue'
-import type { PageSchema } from './types/schema'
-import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './types/componentRegistry'
-import { provide } from 'vue'
+import { ref, reactive, watch } from "vue";
+import zhCn from "element-plus/dist/locale/zh-cn.mjs";
+import { ElMessage } from "element-plus";
+import LowcodeDesigner from "./designer/LowcodeDesigner.vue";
+import FormRenderer from "./renderer/FormRenderer.vue";
+import type { PageSchema } from "./types/schema";
+import {
+  createDefaultRegistry,
+  COMPONENT_REGISTRY_KEY,
+} from "./types/componentRegistry";
+import { provide } from "vue";
 
 // ============================================================
 // 提供 ComponentRegistry（全局物料注册表）
 // 在最顶层 provide，确保 LowcodeDesigner 和 FormRenderer 都能注入到
 // ============================================================
 
-const componentRegistry = createDefaultRegistry()
-provide(COMPONENT_REGISTRY_KEY, componentRegistry)
+const componentRegistry = createDefaultRegistry();
+provide(COMPONENT_REGISTRY_KEY, componentRegistry);
 
 // ============================================================
 // 状态
 // ============================================================
 
-const activeTab = ref<'designer' | 'renderer' | 'json'>('designer')
-const formRendererRef = ref()
-const currentValues = ref<Record<string, any>>({})
+const activeTab = ref<"designer" | "renderer" | "json">("designer");
+const formRendererRef = ref();
+const currentValues = ref<Record<string, any>>({});
 
 // ============================================================
 // 演示用 Schema（展示联动/多字段类型）
 // ============================================================
 
 const demoSchema: PageSchema = {
-  version: '1.0',
-  id: 'demo-form-001',
-  name: '员工信息表单',
-  layoutMode: 'flow',
+  version: "1.0",
+  id: "demo-form-001",
+  name: "员工信息表单",
+  layoutMode: "flow",
   formConfig: {
     labelWidth: 100,
-    labelPosition: 'top',
-    layoutType: 'PC',
+    labelPosition: "top",
+    layoutType: "PC",
     columns: 24,
   },
   schema: {
-    type: 'object',
+    type: "object",
     properties: {
       name: {
-        type: 'string',
-        title: '姓名',
-        'x-component': 'Input',
-        'x-component-props': { placeholder: '请输入姓名' },
-        'x-span': 12,
-        'x-order': 10,
-        'x-id': 'node-name',
-        'x-validator': [
-          { type: 'required', message: '姓名不能为空' },
-          { type: 'maxLength', value: 50, message: '姓名最多50个字符' },
+        type: "string",
+        title: "姓名",
+        "x-component": "Input",
+        "x-component-props": { placeholder: "请输入姓名" },
+        "x-span": 12,
+        "x-order": 10,
+        "x-id": "node-name",
+        "x-validator": [
+          { type: "required", message: "姓名不能为空" },
+          { type: "maxLength", value: 50, message: "姓名最多50个字符" },
         ],
       },
       gender: {
-        type: 'string',
-        title: '性别',
-        'x-component': 'Select',
-        'x-span': 12,
-        'x-order': 20,
-        'x-id': 'node-gender',
-        enum: ['male', 'female', 'other'],
-        enumNames: ['男', '女', '其他'],
+        type: "string",
+        title: "性别",
+        "x-component": "Select",
+        "x-span": 12,
+        "x-order": 20,
+        "x-id": "node-gender",
+        enum: ["male", "female", "other"],
+        enumNames: ["男", "女", "其他"],
       },
       email: {
-        type: 'string',
-        title: '邮箱',
-        'x-component': 'Input',
-        'x-component-props': { placeholder: '请输入邮箱' },
-        'x-span': 12,
-        'x-order': 30,
-        'x-id': 'node-email',
-        'x-validator': [
-          { type: 'email', message: '邮箱格式不正确' },
-        ],
+        type: "string",
+        title: "邮箱",
+        "x-component": "Input",
+        "x-component-props": { placeholder: "请输入邮箱" },
+        "x-span": 12,
+        "x-order": 30,
+        "x-id": "node-email",
+        "x-validator": [{ type: "email", message: "邮箱格式不正确" }],
       },
       phone: {
-        type: 'string',
-        title: '手机号',
-        'x-component': 'Input',
-        'x-component-props': { placeholder: '请输入手机号' },
-        'x-span': 12,
-        'x-order': 40,
-        'x-id': 'node-phone',
-        'x-validator': [
-          { type: 'phone', message: '手机号格式不正确' },
-        ],
+        type: "string",
+        title: "手机号",
+        "x-component": "Input",
+        "x-component-props": { placeholder: "请输入手机号" },
+        "x-span": 12,
+        "x-order": 40,
+        "x-id": "node-phone",
+        "x-validator": [{ type: "phone", message: "手机号格式不正确" }],
       },
       department: {
-        type: 'string',
-        title: '部门',
-        'x-component': 'Select',
-        'x-span': 12,
-        'x-order': 50,
-        'x-id': 'node-dept',
-        enum: ['tech', 'sales', 'hr', 'finance'],
-        enumNames: ['技术部', '销售部', '人事部', '财务部'],
+        type: "string",
+        title: "部门",
+        "x-component": "Select",
+        "x-span": 12,
+        "x-order": 50,
+        "x-id": "node-dept",
+        enum: ["tech", "sales", "hr", "finance"],
+        enumNames: ["技术部", "销售部", "人事部", "财务部"],
       },
       isManager: {
-        type: 'boolean',
-        title: '是否管理层',
-        'x-component': 'Switch',
-        'x-span': 12,
-        'x-order': 60,
-        'x-id': 'node-ismanager',
-        'x-reactions': [
+        type: "boolean",
+        title: "是否管理层",
+        "x-component": "Switch",
+        "x-span": 12,
+        "x-order": 60,
+        "x-id": "node-ismanager",
+        "x-reactions": [
           {
-            target: 'subordinateCount',
+            target: "subordinateCount",
             fulfill: {
               state: { visible: true },
             },
             otherwise: {
               state: { visible: false },
             },
-            when: '$self.value === true',
+            when: "$self.value === true",
           },
         ],
       },
       subordinateCount: {
-        type: 'number',
-        title: '下属人数',
-        'x-component': 'InputNumber',
-        'x-component-props': { min: 0, max: 999 },
-        'x-span': 12,
-        'x-order': 70,
-        'x-id': 'node-subcount',
-        'x-display': 'none', // 初始隐藏，由联动控制
+        type: "number",
+        title: "下属人数",
+        "x-component": "InputNumber",
+        "x-component-props": { min: 0, max: 999 },
+        "x-span": 12,
+        "x-order": 70,
+        "x-id": "node-subcount",
+        "x-display": "none", // 初始隐藏，由联动控制
       },
       hireDate: {
-        type: 'string',
-        title: '入职日期',
-        'x-component': 'DatePicker',
-        'x-component-props': {
-          type: 'date',
-          format: 'YYYY-MM-DD',
-          valueFormat: 'YYYY-MM-DD',
+        type: "string",
+        title: "入职日期",
+        "x-component": "DatePicker",
+        "x-component-props": {
+          type: "date",
+          format: "YYYY-MM-DD",
+          valueFormat: "YYYY-MM-DD",
         },
-        'x-span': 12,
-        'x-order': 80,
-        'x-id': 'node-hiredate',
+        "x-span": 12,
+        "x-order": 80,
+        "x-id": "node-hiredate",
       },
       remark: {
-        type: 'string',
-        title: '备注',
-        'x-component': 'Textarea',
-        'x-component-props': { rows: 4, placeholder: '请输入备注信息' },
-        'x-span': 24,
-        'x-order': 90,
-        'x-id': 'node-remark',
+        type: "string",
+        title: "备注",
+        "x-component": "Textarea",
+        "x-component-props": { rows: 4, placeholder: "请输入备注信息" },
+        "x-span": 24,
+        "x-order": 90,
+        "x-id": "node-remark",
       },
     },
   },
-}
+};
 
 // ============================================================
 // 事件处理
 // ============================================================
 
 function handleExport(schema: PageSchema): void {
-  ElMessage.success(`Schema 已导出：${schema.name}`)
+  ElMessage.success(`Schema 已导出：${schema.name}`);
 }
 
 function handleFormSubmit(values: Record<string, any>): void {
-  ElMessage.success('表单提交成功')
-  console.log('[Demo] 提交值：', values)
+  ElMessage.success("表单提交成功");
+  console.log("[Demo] 提交值：", values);
 }
 
 function handleFormChange(path: string, value: any): void {
-  currentValues.value = formRendererRef.value?.getValues() ?? {}
+  currentValues.value = formRendererRef.value?.getValues() ?? {};
 }
 
 async function handleSubmit(): Promise<void> {
-  await formRendererRef.value?.submit()
+  await formRendererRef.value?.submit();
 }
 
 function handleReset(): void {
-  formRendererRef.value?.reset()
-  currentValues.value = {}
+  formRendererRef.value?.reset();
+  currentValues.value = {};
 }
 
 function handleGetValues(): void {
-  currentValues.value = formRendererRef.value?.getValues() ?? {}
-  ElMessage.info('已获取表单值（见右侧面板）')
+  currentValues.value = formRendererRef.value?.getValues() ?? {};
+  ElMessage.info("已获取表单值（见右侧面板）");
 }
 </script>
 
@@ -256,9 +260,12 @@ function handleGetValues(): void {
   padding: 0;
 }
 
-html, body {
+html,
+body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 }
 
 #app {
@@ -272,6 +279,7 @@ html, body {
   flex-direction: column;
   height: 100vh;
   background: #f0f2f5;
+  overflow: hidden;
 }
 
 .app__nav {
@@ -294,6 +302,7 @@ html, body {
 .app__content {
   flex: 1;
   overflow: visible;
+  overflow: hidden;
 }
 
 .app__content--padded {

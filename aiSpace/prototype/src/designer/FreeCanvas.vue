@@ -85,7 +85,7 @@
           <el-tooltip content="复制" placement="top">
             <button
               class="free-canvas__action-btn"
-              @click.stop="$emit('duplicate-node', selectedNodeId)"
+              @click.stop="$emit('duplicate-node', selectedNodeId ?? '')"
             >
               <el-icon><CopyDocument /></el-icon>
             </button>
@@ -94,7 +94,7 @@
           <el-tooltip content="删除" placement="top">
             <button
               class="free-canvas__action-btn free-canvas__action-btn--danger"
-              @click.stop="$emit('remove-node', selectedNodeId)"
+              @click.stop="$emit('remove-node', selectedNodeId ?? '')"
             >
               <el-icon><Delete /></el-icon>
             </button>
@@ -117,8 +117,6 @@ import type { PageSchema, FieldSchema } from '../types/schema'
 interface Props {
   schema: PageSchema
   selectedNodeId: string | null
-  /** 画布 DOM 容器（用于计算相对坐标） */
-  canvasEl: HTMLElement | null
 }
 
 const props = defineProps<Props>()

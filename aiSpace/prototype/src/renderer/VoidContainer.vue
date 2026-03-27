@@ -16,7 +16,7 @@
       <span>{{ componentProps.title }}</span>
     </template>
     <FlowLayout
-      v-if="schema.properties"
+      v-if="schema?.properties"
       :properties="schema.properties"
       :form-model="formModel"
       :path-prefix="pathPrefix"
@@ -31,15 +31,15 @@
     class="lowcode-void-tabs"
     :class="schema['x-class']"
   >
-    <template v-for="(paneSchema, paneKey) in schema.properties" :key="paneKey">
+    <template v-for="(paneSchema, paneKey) in schema?.properties" :key="paneKey">
       <el-tab-pane
         v-if="paneSchema['x-component'] === 'TabPane'"
         :label="paneSchema['x-component-props']?.label ?? String(paneKey)"
         :name="String(paneKey)"
       >
         <FlowLayout
-          v-if="paneSchema.properties"
-          :properties="paneSchema.properties"
+          v-if="(paneSchema as any).properties"
+          :properties="(paneSchema as any).properties"
           :form-model="formModel"
           :path-prefix="pathPrefix"
           :columns="props.columns ?? 1"
@@ -55,15 +55,15 @@
     class="lowcode-void-collapse mb-4"
     :class="schema['x-class']"
   >
-    <template v-for="(itemSchema, itemKey) in schema.properties" :key="itemKey">
+    <template v-for="(itemSchema, itemKey) in schema?.properties" :key="itemKey">
       <el-collapse-item
         v-if="itemSchema['x-component'] === 'CollapseItem'"
         :title="itemSchema['x-component-props']?.label ?? String(itemKey)"
         :name="String(itemKey)"
       >
         <FlowLayout
-          v-if="itemSchema.properties"
-          :properties="itemSchema.properties"
+          v-if="(itemSchema as any).properties"
+          :properties="(itemSchema as any).properties"
           :form-model="formModel"
           :path-prefix="pathPrefix"
           :columns="props.columns ?? 1"

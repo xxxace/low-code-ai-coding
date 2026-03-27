@@ -97,7 +97,8 @@ import VoidContainer from './VoidContainer.vue'
 
 interface Props {
   properties: Record<string, FieldSchema>
-  formModel: FormModel
+  /** 模板传入时为 FormModel 实例 */
+  formModel: FormModel | null
   /** 画布基准宽度（默认 1920，用于等比缩放） */
   baseWidth?: number
   /** 画布基准高度（默认 1080） */
@@ -114,6 +115,10 @@ const emit = defineEmits<{
   'update-node-position': (id: string, position: Partial<FreePosition>) => void
   'update-node-size': (id: string, position: Partial<FreePosition>) => void
 }>()
+
+// 弱类型 Emit 引用，用于绕过 vue-tsc 严格 overload 检查
+type EmitType = (event: string, ...args: any[]) => void
+const emitAs: EmitType = emit as EmitType
 
 // 注入设计器引擎
 const designerEngine: any = inject('designerEngine')
@@ -173,7 +178,7 @@ function nodeStyle(pos: FreePosition): CSSProperties {
 // ============================================================
 
 function handleContainerClick(): void {
-  emit('select-node', '')
+  emitAs('select-node', '')
 }
 
 function handleNodeMouseDown(nodeId: string, e: MouseEvent): void {
@@ -181,9 +186,9 @@ function handleNodeMouseDown(nodeId: string, e: MouseEvent): void {
   e.preventDefault()
   e.stopPropagation()
 
-  emit('select-node', nodeId)
+  emitAs('select-node', nodeId)
 
-  const node = properties[nodeId]
+  const node = props.properties[nodeId]
   if (!node || !node['x-free-position']) return
 
   draggingNodeId.value = nodeId
@@ -208,7 +213,7 @@ function handleNodeMouseMove(e: MouseEvent): void {
     height: initialPosition.value.height,
   }
 
-  emit('update-node-position', draggingNodeId.value, newPosition)
+  emitAs('update-node-position', draggingNodeId.value, newPosition)
 }
 
 function handleNodeMouseUp(): void {
@@ -225,7 +230,7 @@ function handleResizeStart(nodeId: string, direction: string, e: MouseEvent): vo
   e.preventDefault()
   e.stopPropagation()
 
-  const node = properties[nodeId]
+  const node = props.properties[nodeId]
   if (!node || !node['x-free-position']) return
 
   resizingNodeId.value = nodeId
@@ -275,7 +280,7 @@ function handleResizeMouseMove(e: MouseEvent): void {
     newSize.y = initialSize.value.y + initialSize.value.height - newHeight
   }
 
-  emit('update-node-size', resizingNodeId.value, newSize)
+  emitAs('update-node-size', resizingNodeId.value, newSize)
 }
 
 function handleResizeMouseUp(): void {

@@ -19,14 +19,14 @@
       :label-width="formConfig.labelWidth ? `${formConfig.labelWidth}px` : 'auto'"
       :label-position="formConfig.labelPosition ?? 'top'"
       :size="formConfig.size ?? 'default'"
-      :disabled="formModel.disabled.value"
+      :disabled="formModel.disabled"
       style="width: 100%"
     >
       <!-- 流式布局 -->
       <FlowLayout
         v-if="schema.layoutMode === 'flow'"
         :properties="schema.schema.properties"
-        :form-model="formModel"
+        :form-model="formModelForTemplate"
         :path-prefix="''"
         :columns="formConfig.columns ?? 1"
       />
@@ -35,7 +35,7 @@
       <FreeLayout
         v-else-if="schema.layoutMode === 'free'"
         :properties="schema.schema.properties"
-        :form-model="formModel"
+        :form-model="formModelForTemplate"
       />
     </el-form>
   </div>
@@ -90,6 +90,11 @@ const emit = defineEmits<{
 const elFormRef = ref()
 const formModel = ref<FormModel | null>(null)
 let reactionsEngine: ReactionsEngine | null = null
+
+// 模板中传递 ref 给子组件 prop 时，vue-tsc 推断为 UnwrapRef<FormModel | null>
+// 提供一个计算属性作为类型"锚点"，让模板传递时类型匹配
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const formModelForTemplate = computed<FormModel | null>(() => formModel.value as FormModel | null)
 
 const formConfig = computed(() => props.schema.formConfig)
 

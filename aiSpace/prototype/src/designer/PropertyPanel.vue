@@ -253,7 +253,7 @@ watch(
 // ============================================================
 
 const onChange = (path: string) => {
-  emit('update', path, localSchema.value[path])
+  emit('update', path, (localSchema.value as Record<string, unknown>)[path])
 }
 
 const onComponentPropsChange = () => {

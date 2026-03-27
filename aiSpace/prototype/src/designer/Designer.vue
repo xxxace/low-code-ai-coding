@@ -102,13 +102,11 @@
         <!-- 自由布局画布 -->
         <FreeCanvas
           v-else
-          :nodes="schema?.schema.properties ?? {}"
-          :width="1920"
-          :height="1080"
+          :schema="schema!"
           :selected-node-id="selectedNodeId"
-          @update:selected-node-id="selectNode"
-          @update:position="updateNodePosition"
-          @node-select="onNodeSelect"
+          @select-node="selectNode"
+          @duplicate-node="duplicateNode($event)"
+          @remove-node="removeNode($event)"
         >
           <template #node="{ nodeSchema }">
             <div class="free-node-content">
@@ -165,7 +163,7 @@ import PropertyPanel from './PropertyPanel.vue'
 import FreeCanvas from './FreeCanvas.vue'
 import FlowLayout from '../renderer/FlowLayout.vue'
 import FormRenderer from '../renderer/FormRenderer.vue'
-import { useDesignerEngine } from './designerEngine'
+import { useDesignerEngine } from './engine/designerEngine'
 import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
 import { createFormModel } from '../types/model'
 import type { FieldSchema, FreePosition, LayoutMode } from '../types/schema'
@@ -190,6 +188,8 @@ const {
   selectNode,
   exportSchema,
   generateCode: engineGenerateCode,
+  duplicateNode,
+  removeNode,
 } = useDesignerEngine()
 
 // ============================================================

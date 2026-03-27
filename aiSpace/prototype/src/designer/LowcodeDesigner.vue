@@ -11,7 +11,8 @@
   设计原则：
   - 画布复用 Renderer，在其上叠加拖拽交互层
   - 属性面板根据选中节点动态渲染对应的配置面板
-  - 支持键盘快捷键（Ctrl+Z 撤销，Ctrl+Y 重做，Delete 删除）
+  - 键盘快捷键由 useKeyboardShortcuts 统一处理
+  - 物料拖拽由 useMaterialDrag 统一处理
 -->
 <template>
   <div class="lowcode-designer" @keydown="handleKeyDown" tabindex="0">
@@ -50,15 +51,10 @@
           </el-button>
         </el-button-group>
 
-        <!-- 预览 -->
         <el-button size="small" @click="showPreview = true">预览</el-button>
-
-        <!-- 导出 Schema -->
         <el-button size="small" type="primary" @click="handleExport"
           >导出 Schema</el-button
         >
-
-        <!-- 生成代码 -->
         <el-button size="small" @click="showCodeDialog = true"
           >生成代码</el-button
         >
@@ -67,7 +63,7 @@
 
     <!-- 主体区域 -->
     <div class="lowcode-designer__main">
-      <!-- 左侧物料面板（使用 MaterialPalette 组件，动态从 ComponentRegistry 读取） -->
+      <!-- 左侧物料面板 -->
       <div class="lowcode-designer__palette">
         <MaterialPalette
           @drag-start="handleMaterialDragStartFromPalette"
@@ -79,7 +75,7 @@
       <div
         class="lowcode-designer__canvas"
         @dragover.prevent
-        @drop="handleCanvasDrop"
+        @drop="(e) => handleCanvasDrop(e, canvasRef, layoutMode === 'free')"
         @click.self="engine.selectNode(null)"
       >
         <div
@@ -95,16 +91,13 @@
 
           <!-- Renderer 预览（设计模式下禁用交互） -->
           <div v-else-if="currentSchema" class="canvas-renderer">
-            <!-- 实际 Renderer（设计模式：强制显示所有字段、禁止交互） -->
             <FormRenderer
               :schema="currentSchema"
               :design-mode="true"
               class="canvas-renderer__preview"
             />
 
-            <!-- 在 Renderer 上叠加设计器交互层（position:absolute inset:0，相对 canvas-renderer 定位） -->
             <template v-if="currentSchema.layoutMode === 'free'">
-              <!-- 自由布局：使用 FreeCanvas 组件（支持拖拽调整和缩放） -->
               <FreeCanvas
                 :schema="currentSchema"
                 :selected-node-id="engine.selectedNodeId.value"
@@ -117,16 +110,19 @@
             </template>
 
             <template v-else>
-              <!-- 流式布局：使用 DesignOverlay 组件 -->
               <DesignOverlay
                 :schema="currentSchema"
                 :selected-node-id="engine.selectedNodeId.value"
                 :canvas-el="canvasRef"
                 @select-node="engine.selectNode($event)"
                 @remove-node="engine.removeNode($event)"
-                @duplicate-node="handleDuplicateNode($event)"
-                @move-node="handleMoveNode"
-                @reorder-nodes="handleReorderNodes"
+                @duplicate-node="engine.duplicateNode($event)"
+                @move-node="
+                  (nodeId, dir) => engine.moveNode(nodeId, dir as 'up' | 'down')
+                "
+                @reorder-nodes="
+                  (fromId, toId) => engine.sortNodes(fromId, toId, 'before')
+                "
               />
             </template>
           </div>
@@ -139,14 +135,12 @@
           {{ engine.selectedNodeSchema.value ? "字段属性" : "页面属性" }}
         </div>
         <div class="properties-content">
-          <!-- 页面级属性 -->
           <PageProperties
             v-if="!engine.selectedNodeSchema.value && currentSchema"
             :schema="currentSchema"
             @update="handlePagePropsUpdate"
           />
 
-          <!-- 字段级属性 -->
           <FieldProperties
             v-else-if="engine.selectedNodeSchema.value"
             :schema="engine.selectedNodeSchema.value"
@@ -179,13 +173,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, watch } from "vue";
+import { ref, computed, provide } from "vue";
 import { ElMessage } from "element-plus";
 import { RefreshLeft, RefreshRight, Plus } from "@element-plus/icons-vue";
-import type { PageSchema, FieldSchema } from "../types/schema";
-import { useDesignerEngine } from "./designerEngine";
+import type { PageSchema, FieldSchema } from "../core/schema";
+import { useDesignerEngine } from "./engine/designerEngine";
+import { useMaterialDrag } from "./composables/useMaterialDrag";
+import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
 import FormRenderer from "../renderer/FormRenderer.vue";
-
 import MaterialPalette from "./MaterialPalette.vue";
 import DesignOverlay from "./DesignOverlay.vue";
 import FreeCanvas from "./FreeCanvas.vue";
@@ -194,7 +189,7 @@ import FieldProperties from "./FieldProperties.vue";
 import {
   createDefaultRegistry,
   COMPONENT_REGISTRY_KEY,
-} from "../types/componentRegistry";
+} from "../core/registry";
 
 // ============================================================
 // Props & Emits
@@ -211,17 +206,21 @@ const emit = defineEmits<{
 }>();
 
 // ============================================================
-// 设计器引擎
+// 设计器引擎 & Composables
 // ============================================================
 
 const engine = useDesignerEngine();
-
-// Provide 给子组件使用
 provide("designerEngine", engine);
 
-// 提供 ComponentRegistry（给 MaterialPalette / FormRenderer / FieldRenderer 使用）
 const componentRegistry = createDefaultRegistry();
 provide(COMPONENT_REGISTRY_KEY, componentRegistry);
+
+const {
+  handleMaterialDragStartFromPalette,
+  handleMaterialClick,
+  handleCanvasDrop,
+} = useMaterialDrag(engine);
+const { handleKeyDown } = useKeyboardShortcuts(engine);
 
 // ============================================================
 // 状态
@@ -230,7 +229,6 @@ provide(COMPONENT_REGISTRY_KEY, componentRegistry);
 const canvasRef = ref<HTMLElement | null>(null);
 const showPreview = ref(false);
 const showCodeDialog = ref(false);
-const draggingMaterial = ref<any | null>(null);
 
 const currentSchema = computed(() => engine.schema.value);
 
@@ -243,7 +241,6 @@ const layoutMode = computed({
   get: () => currentSchema.value?.layoutMode ?? "flow",
   set: (mode) => {
     if (!engine.schema.value) return;
-    // 直接修改 schema 的 layoutMode（非字段节点属性，不通过 updateNodeProps）
     const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
     newSchema.layoutMode = mode;
     engine.loadSchema(newSchema);
@@ -251,34 +248,6 @@ const layoutMode = computed({
 });
 
 const generatedCode = computed(() => engine.generateCode());
-
-// ============================================================
-// 图标映射（保留供其他地方使用）
-// ============================================================
-
-// ============================================================
-// 物料定义（由 MaterialPalette 组件从 ComponentRegistry 动态读取，不再硬编码）
-// ============================================================
-
-// draggingMaterial 统一从 MaterialPalette 的 drag-start 事件设置
-function handleMaterialDragStartFromPalette(
-  material: any,
-  _event: DragEvent,
-): void {
-  draggingMaterial.value = material;
-}
-
-function handleMaterialClick(material: any): void {
-  // 点击物料时直接添加到画布末尾
-  const fieldKey = `field_${Date.now()}`;
-  const fieldSchema: FieldSchema = {
-    ...(material.defaultSchema ?? {}),
-    title: material.label,
-    "x-id": engine.generateNodeId(),
-    "x-span": 1,
-  };
-  engine.addNode("", fieldKey, fieldSchema);
-}
 
 // ============================================================
 // 生命周期
@@ -294,52 +263,8 @@ if (props.initialSchema) {
 // 事件处理
 // ============================================================
 
-function handleCanvasDrop(e: DragEvent): void {
-  e.preventDefault();
-
-  // 尝试从 dataTransfer 读取（MaterialPalette 设置了 'material' key）
-  let material = draggingMaterial.value;
-  if (!material && e.dataTransfer) {
-    const raw = e.dataTransfer.getData("material");
-    if (raw) {
-      try {
-        material = JSON.parse(raw);
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-  if (!material) return;
-
-  const fieldKey = `field_${Date.now()}`;
-
-  // 根据当前布局模式补充不同的定位信息
-  const isFreelayout = layoutMode.value === "free";
-
-  // 计算 free 布局的初始落点坐标（相对于 canvas-container）
-  let freePosition: Record<string, any> | undefined;
-  if (isFreelayout && canvasRef.value) {
-    const rect = canvasRef.value.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - 60);
-    const y = Math.max(0, e.clientY - rect.top - 16);
-    freePosition = { x, y, width: 200, height: 40, zIndex: 1 };
-  }
-
-  const fieldSchema: FieldSchema = {
-    ...(material.defaultSchema ?? {}),
-    title: material.label ?? material.name,
-    "x-id": engine.generateNodeId(),
-    "x-span": isFreelayout ? 24 : 1,
-    ...(freePosition ? { "x-free-position": freePosition } : {}),
-  };
-
-  engine.addNode("", fieldKey, fieldSchema);
-  draggingMaterial.value = null;
-}
-
 function handlePagePropsUpdate(updates: Partial<PageSchema>): void {
   if (!engine.schema.value) return;
-  // 直接原地修改 schema，确保 Vue 响应式链路不被新对象替换打断
   if (updates.name !== undefined) engine.schema.value.name = updates.name;
   if (updates.formConfig) {
     Object.assign(engine.schema.value.formConfig, updates.formConfig);
@@ -354,66 +279,22 @@ function handleFieldPropsUpdate(
   if (!engine.schema.value) return;
   const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
 
-  function findAndUpdateNode(properties: Record<string, FieldSchema>): boolean {
+  function findAndUpdate(properties: Record<string, FieldSchema>): boolean {
     for (const [key, schema] of Object.entries(properties)) {
       if (schema["x-id"] === nodeId) {
         Object.assign(properties[key], updates);
         return true;
       }
       if ("properties" in schema && schema.properties) {
-        if (findAndUpdateNode(schema.properties)) {
-          return true;
-        }
+        if (findAndUpdate(schema.properties)) return true;
       }
     }
     return false;
   }
 
-  findAndUpdateNode(newSchema.schema.properties);
+  findAndUpdate(newSchema.schema.properties);
   engine.schema.value = newSchema;
   engine.saveSnapshot();
-}
-
-function handleDuplicateNode(nodeId: string): void {
-  engine.duplicateNode(nodeId);
-}
-
-function handleMoveNode(nodeId: string, direction: "up" | "down"): void {
-  engine.moveNode(nodeId, direction);
-}
-
-function handleReorderNodes(fromId: string, toId: string): void {
-  if (!engine.schema.value) return
-  const newSchema = JSON.parse(JSON.stringify(engine.schema.value))
-  const props = newSchema.schema.properties
-
-  // 找到 fromNode 和 toNode 的 x-order，交换
-  let fromOrder: number | undefined
-  let toOrder: number | undefined
-
-  function findOrders(properties: Record<string, any>): void {
-    for (const [, schema] of Object.entries(properties)) {
-      if (schema['x-id'] === fromId) fromOrder = schema['x-order'] ?? 0
-      if (schema['x-id'] === toId) toOrder = schema['x-order'] ?? 0
-      if (schema.properties) findOrders(schema.properties)
-    }
-  }
-
-  findOrders(props)
-  if (fromOrder === undefined || toOrder === undefined) return
-
-  // 交换两个节点的 x-order
-  function swapOrders(properties: Record<string, any>): void {
-    for (const [, schema] of Object.entries(properties)) {
-      if (schema['x-id'] === fromId) schema['x-order'] = toOrder
-      if (schema['x-id'] === toId) schema['x-order'] = fromOrder
-      if (schema.properties) swapOrders(schema.properties)
-    }
-  }
-
-  swapOrders(props)
-  engine.schema.value = newSchema
-  engine.saveSnapshot()
 }
 
 function handleUpdateNodePosition(
@@ -434,7 +315,6 @@ function handleExport(): void {
   const schema = engine.exportSchema();
   if (schema) {
     emit("export", schema);
-    // 也可以下载为文件
     const blob = new Blob([JSON.stringify(schema, null, 2)], {
       type: "application/json",
     });
@@ -450,29 +330,6 @@ function handleExport(): void {
 function copyCode(): void {
   navigator.clipboard.writeText(generatedCode.value);
   ElMessage.success("代码已复制到剪贴板");
-}
-
-// ============================================================
-// 键盘快捷键
-// ============================================================
-
-function handleKeyDown(e: KeyboardEvent): void {
-  const isCtrl = e.ctrlKey || e.metaKey;
-
-  if (isCtrl && e.key === "z") {
-    e.preventDefault();
-    engine.undo();
-  } else if (isCtrl && (e.key === "y" || (e.shiftKey && e.key === "z"))) {
-    e.preventDefault();
-    engine.redo();
-  } else if (e.key === "Delete" || e.key === "Backspace") {
-    if (engine.selectedNodeId.value) {
-      e.preventDefault();
-      engine.removeNode(engine.selectedNodeId.value);
-    }
-  } else if (e.key === "Escape") {
-    engine.selectNode(null);
-  }
 }
 </script>
 
@@ -551,6 +408,8 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 .lowcode-designer__properties {
+  display: flex;
+  flex-direction: column;
   width: 280px;
   background: #fff;
   border-left: 1px solid #e8e8e8;
@@ -568,7 +427,9 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 .properties-content {
+  flex: 1;
   padding: 12px;
+  overflow: auto;
 }
 
 .code-preview {
