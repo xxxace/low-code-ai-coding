@@ -98,43 +98,10 @@
               class="canvas-renderer__preview"
             />
 
-            <template v-if="currentSchema.layoutMode === 'free'">
-              <FreeCanvas
-                :schema="currentSchema"
-                :selected-node-id="engine.selectedNodeId.value"
-                :canvas-el="canvasRef"
-                @select-node="engine.selectNode($event)"
-                @remove-node="engine.removeNode($event)"
-                @update-node-position="handleUpdateNodePosition"
-                @update-node-size="handleUpdateNodeSize"
-              />
-            </template>
-
-            <template v-else>
-              <DesignOverlay
-                :schema="currentSchema"
-                :selected-node-id="engine.selectedNodeId.value"
-                :canvas-el="canvasRef"
-                @select-node="engine.selectNode($event)"
-                @remove-node="engine.removeNode($event)"
-                @duplicate-node="engine.duplicateNode($event)"
-                @move-node="
-                  (nodeId, dir) => engine.moveNode(nodeId, dir as 'up' | 'down')
-                "
-                @reorder-nodes="
-                  (fromId, toId, position) =>
-                    engine.sortNodes(fromId, toId, position)
-                "
-                @move-to-container="
-                  (nodeId, containerId) =>
-                    engine.moveNodeToContainer(nodeId, containerId)
-                "
-                @move-across-containers="
-                  (nodeId, targetId, position) =>
-                    engine.moveNodeAcrossContainers(nodeId, targetId, position)
-                "
-              />
-            </template>
+            <!--
+              交互层已移除（Step 3 再添加统一的 AbsoluteNodeOverlay）
+              XLayout 负责渲染，AbsoluteNodeOverlay 负责交互
+            -->
           </div>
         </div>
       </div>
@@ -201,8 +168,6 @@ import { useMaterialDrag } from "./composables/useMaterialDrag";
 import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
 import FormRenderer from "../renderer/FormRenderer.vue";
 import MaterialPalette from "./MaterialPalette.vue";
-import DesignOverlay from "./DesignOverlay.vue";
-import FreeCanvas from "./FreeCanvas.vue";
 import PageProperties from "./PageProperties.vue";
 import FieldProperties from "./FieldProperties.vue";
 import {

@@ -12,11 +12,12 @@
     class="lowcode-void-card mb-4"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
+    :style="containerStyle"
   >
     <template v-if="componentProps.title" #header>
       <span>{{ componentProps.title }}</span>
     </template>
-    <FlowLayout
+    <XLayout
       v-if="schema?.properties"
       :properties="schema.properties"
       :form-model="formModel"
@@ -32,6 +33,7 @@
     class="lowcode-void-tabs"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
+    :style="containerStyle"
   >
     <template v-for="(paneSchema, paneKey) in schema?.properties" :key="paneKey">
       <el-tab-pane
@@ -39,7 +41,7 @@
         :label="paneSchema['x-component-props']?.label ?? String(paneKey)"
         :name="String(paneKey)"
       >
-        <FlowLayout
+        <XLayout
           v-if="(paneSchema as any).properties"
           :properties="(paneSchema as any).properties"
           :form-model="formModel"
@@ -57,6 +59,7 @@
     class="lowcode-void-collapse mb-4"
     :class="schema['x-class']"
     :data-field-id="schema['x-id']"
+    :style="containerStyle"
   >
     <template v-for="(itemSchema, itemKey) in schema?.properties" :key="itemKey">
       <el-collapse-item
@@ -64,7 +67,7 @@
         :title="itemSchema['x-component-props']?.label ?? String(itemKey)"
         :name="String(itemKey)"
       >
-        <FlowLayout
+        <XLayout
           v-if="(itemSchema as any).properties"
           :properties="(itemSchema as any).properties"
           :form-model="formModel"
@@ -85,15 +88,15 @@
     {{ componentProps.title }}
   </el-divider>
 
-  <!-- 通用容器（div + FlowLayout 子节点） -->
+  <!-- 通用容器（div + XLayout 子节点） -->
   <div
     v-else
     class="lowcode-void-container"
     :class="schema['x-class']"
-    :style="schema['x-style']"
+    :style="{ ...containerStyle, ...schema['x-style'] }"
     :data-field-id="schema['x-id']"
   >
-    <FlowLayout
+    <XLayout
       v-if="schema.properties"
       :properties="schema.properties"
       :form-model="formModel"
@@ -104,10 +107,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type CSSProperties } from 'vue'
 import type { VoidFieldSchema } from '../types/schema'
 import type { FormModel } from '../types/model'
-import FlowLayout from './FlowLayout.vue'
+import XLayout from './XLayout.vue'
 
 // ============================================================
 // Props
@@ -119,7 +122,7 @@ interface Props {
   fieldKey: string
   /** 父节点的数据路径前缀（虚字段本身不会改变这个路径） */
   pathPrefix: string
-  /** 布局列数，透传给子 FlowLayout */
+  /** 布局列数，透传给子 XLayout */
   columns?: number
 }
 
@@ -132,6 +135,33 @@ const props = defineProps<Props>()
 const componentName = computed(() => props.schema['x-component'])
 
 const componentProps = computed(() => props.schema['x-component-props'] ?? {})
+
+/**
+ * 容器根元素的定位样式
+ *
+ * 关键：容器默认 position: relative，建立内部 absolute 子节点的定位上下文。
+ * 如果容器本身是 absolute，则其 absolute 子节点相对于画布（而非容器）定位。
+ */
+const containerStyle = computed((): CSSProperties => {
+  const base: CSSProperties = {}
+
+  if (props.schema['x-position-type'] === 'absolute') {
+    const pos = props.schema['x-position']
+    Object.assign(base, {
+      position: 'absolute',
+      left: `${pos?.x ?? 0}px`,
+      top: `${pos?.y ?? 0}px`,
+      width: `${pos?.width ?? 400}px`,
+      height: `${pos?.height ?? 200}px`,
+      boxSizing: 'border-box',
+    })
+  } else {
+    // relative（默认）：建立定位上下文，供 absolute 子节点定位
+    Object.assign(base, { position: 'relative' as const })
+  }
+
+  return base
+})
 </script>
 
 <style scoped>

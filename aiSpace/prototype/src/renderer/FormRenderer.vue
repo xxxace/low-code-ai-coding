@@ -1,15 +1,12 @@
 <!-- 
   FormRenderer.vue
   表单根渲染器 —— 解析 PageSchema，初始化 FormModel 和 ReactionsEngine，
-  然后根据 layoutMode 分发到 FlowLayout 或 FreeLayout 渲染
+  然后通过 XLayout 统一渲染（每个节点根据 x-position-type 决定 relative 或 absolute 定位）
 -->
 <template>
   <div
     class="lowcode-renderer"
-    :class="[
-      `lowcode-renderer--${schema.layoutMode}`,
-      `lowcode-renderer--${formConfig.layoutType ?? 'PC'}`.toLowerCase(),
-    ]"
+    :class="`lowcode-renderer--${formConfig.layoutType ?? 'PC'}`.toLowerCase()"
     :style="cssVariables"
   >
     <el-form
@@ -22,20 +19,14 @@
       :disabled="formModel.disabled"
       style="width: 100%"
     >
-      <!-- 流式布局 -->
-      <FlowLayout
-        v-if="schema.layoutMode === 'flow'"
+      <!-- 统一布局（XLayout） -->
+      <!-- 每个节点根据 x-position-type 决定定位方式 -->
+      <!-- relative → 流式排列，absolute → 自由定位 -->
+      <XLayout
         :properties="schema.schema.properties"
         :form-model="formModelForTemplate"
         :path-prefix="''"
         :columns="formConfig.columns ?? 1"
-      />
-
-      <!-- 自由布局 -->
-      <FreeLayout
-        v-else-if="schema.layoutMode === 'free'"
-        :properties="schema.schema.properties"
-        :form-model="formModelForTemplate"
       />
     </el-form>
   </div>
@@ -47,8 +38,7 @@ import type { PageSchema } from '../types/schema'
 import { createFormModel, type FormModel } from '../types/model'
 import { createReactionsEngine, type ReactionsEngine } from '../types/reactions'
 import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
-import FlowLayout from './FlowLayout.vue'
-import FreeLayout from './FreeLayout.vue'
+import XLayout from './XLayout.vue'
 
 // ============================================================
 // Props & Emits

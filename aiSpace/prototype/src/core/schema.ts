@@ -323,6 +323,16 @@ export interface BaseFieldSchema {
   'x-order'?: number
   /** 自由布局的位置信息 */
   'x-free-position'?: FreePosition
+  /** 节点定位类型（XLayout 使用）: relative=流式排列，absolute=自由定位，默认 relative */
+  'x-position-type'?: 'relative' | 'absolute'
+  /** 绝对定位坐标（x-position-type=absolute 时有效） */
+  'x-position'?: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    zIndex?: number
+  }
   /** 自定义 CSS class */
   'x-class'?: string
   /** 内联样式 */
