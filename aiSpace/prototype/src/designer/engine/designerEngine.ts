@@ -28,6 +28,7 @@ import {
   moveNodeToContainer as moveNodeToContainerUtil,
   updateNodeFreePositionById,
   updateNodeFreeSizeById,
+  moveNodeAcrossContainers as moveNodeAcrossContainersUtil,
 } from './schemaUtils'
 import { HistoryManager } from './HistoryManager'
 import { designerBus } from './designerBus'
@@ -261,6 +262,32 @@ export function useDesignerEngine() {
     designerBus.emit('schema:changed', { schema: newSchema })
   }
 
+  /**
+   * 跨容器移动节点并排序（原子操作）
+   * 用于拖拽时从容器内拖到容器外（或反向）
+   */
+  function moveNodeAcrossContainers(
+    nodeId: string,
+    targetId: string,
+    position: 'before' | 'after'
+  ): void {
+    if (!schema.value || nodeId === targetId) return
+
+    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
+    const moved = moveNodeAcrossContainersUtil(newSchema.schema, nodeId, targetId, position)
+
+    if (!moved) {
+      console.warn(
+        `[DesignerEngine] moveNodeAcrossContainers: 无法将节点 ${nodeId} 移动到 ${targetId} ${position}`
+      )
+      return
+    }
+
+    schema.value = newSchema
+    saveSnapshot()
+    designerBus.emit('schema:changed', { schema: newSchema })
+  }
+
   function updateNodeFreePosition(
     nodeId: string,
     position: { x: number; y: number }
@@ -351,6 +378,7 @@ const handleSubmit = (values: Record<string, any>) => {
     moveNode,
     sortNodes,
     moveNodeToContainer,
+    moveNodeAcrossContainers,
     updateNodeProps,
     updateNodeFreePosition,
     updateNodeFreeSize,

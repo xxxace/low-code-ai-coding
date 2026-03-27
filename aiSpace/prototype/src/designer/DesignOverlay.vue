@@ -167,6 +167,7 @@ const emit = defineEmits<{
   (e: 'move-node', id: string, direction: 'up' | 'down'): void
   (e: 'reorder-nodes', fromId: string, toId: string, position: 'before' | 'after'): void
   (e: 'move-to-container', nodeId: string, containerId: string): void
+  (e: 'move-across-containers', nodeId: string, targetId: string, position: 'before' | 'after'): void
   (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
   (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
 }>()
@@ -579,16 +580,8 @@ function handleDrop(toNodeId: string): void {
     const targetNode = flatNodes.value.find((n) => n.id === toNodeId)
 
     if (sourceNode && targetNode && sourceNode.parentId !== targetNode.parentId) {
-      // 跨层：先把 source 移入 target 的 parent 容器（若 target.parentId 是 '__root__' 则无法用 move-to-container）
-      // 简化处理：如果 target.parentId 不是 '__root__'，先移入容器，再排序
-      // 如果 target.parentId === '__root__'，也 emit reorder-nodes，engine 会 warn 但不会崩
-      if (targetNode.parentId !== '__root__') {
-        emit('move-to-container', fromId, targetNode.parentId)
-      } else {
-        // target 在根层，source 在容器内 → 先移出容器到根（用一个特殊的根容器 ID '__root__' 无法直接操作）
-        // 实际 engine 里 sortNodesInSchema 在找不到同层时会静默失败，这里兜底 reorder-nodes
-        emit('reorder-nodes', fromId, toNodeId, intent ?? 'before')
-      }
+      // 跨层：使用 move-across-containers 一次性完成移出+排序
+      emit('move-across-containers', fromId, toNodeId, intent ?? 'before')
     } else {
       emit('reorder-nodes', fromId, toNodeId, intent ?? 'before')
     }

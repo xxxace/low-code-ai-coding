@@ -27,6 +27,7 @@ import {
   ElCascader,
   ElTreeSelect,
 } from 'element-plus'
+import { defineComponent, type Component } from 'vue'
 import { ComponentRegistry } from './ComponentRegistry'
 
 /**
@@ -485,6 +486,147 @@ export function createDefaultRegistry(): ComponentRegistry {
             { key: 'multiple', label: '多文件上传', setter: 'boolean', defaultValue: false },
             { key: 'limit', label: '文件数量上限', setter: 'number' },
             { key: 'drag', label: '拖拽上传', setter: 'boolean', defaultValue: false },
+          ],
+        },
+      ],
+    })
+
+  // ---- 容器组件 ----
+  // 注意：void 容器在 FlowLayout 中被拦截，交给 VoidContainer.vue 渲染，
+  // 不会走 registry.getWidget() 路径，因此 component 参数传空占位即可。
+  const voidPlaceholder = defineComponent(() => null) as unknown as Component
+
+  registry
+    .registerWidget('Card', voidPlaceholder, {
+      label: '卡片容器',
+      category: 'container',
+      icon: 'Postcard',
+      isContainer: true,
+      defaultSchema: {
+        type: 'void',
+        'x-component': 'Card',
+        'x-component-props': { title: '' },
+        properties: {},
+      },
+      propSetters: [
+        {
+          title: '卡片设置',
+          setters: [
+            { key: 'title', label: '标题', setter: 'text', tip: '留空则不显示标题栏' },
+            { key: 'shadow', label: '阴影', setter: 'select', defaultValue: '',
+              options: [
+                { label: '默认', value: '' },
+                { label: '始终', value: 'always' },
+                { label: '悬停', value: 'hover' },
+                { label: '无', value: 'never' },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    .registerWidget('Tabs', voidPlaceholder, {
+      label: '标签页',
+      category: 'container',
+      icon: 'Menu',
+      isContainer: true,
+      defaultSchema: {
+        type: 'void',
+        'x-component': 'Tabs',
+        properties: {
+          tabPane1: {
+            type: 'void',
+            'x-component': 'TabPane',
+            'x-component-props': { label: '标签一' },
+            properties: {},
+          },
+          tabPane2: {
+            type: 'void',
+            'x-component': 'TabPane',
+            'x-component-props': { label: '标签二' },
+            properties: {},
+          },
+        },
+      },
+      propSetters: [
+        {
+          title: '标签页设置',
+          setters: [
+            { key: 'type', label: '样式', setter: 'select', defaultValue: '',
+              options: [
+                { label: '默认（线型）', value: '' },
+                { label: '卡片', value: 'card' },
+                { label: '边框卡片', value: 'border-card' },
+              ],
+            },
+            { key: 'stretch', label: '标签撑满', setter: 'boolean', defaultValue: false },
+          ],
+        },
+      ],
+    })
+    .registerWidget('Collapse', voidPlaceholder, {
+      label: '折叠面板',
+      category: 'container',
+      icon: 'Fold',
+      isContainer: true,
+      defaultSchema: {
+        type: 'void',
+        'x-component': 'Collapse',
+        properties: {
+          collapseItem1: {
+            type: 'void',
+            'x-component': 'CollapseItem',
+            'x-component-props': { label: '面板一' },
+            properties: {},
+          },
+          collapseItem2: {
+            type: 'void',
+            'x-component': 'CollapseItem',
+            'x-component-props': { label: '面板二' },
+            properties: {},
+          },
+        },
+      },
+      propSetters: [
+        {
+          title: '折叠面板设置',
+          setters: [
+            { key: 'accordion', label: '手风琴模式', setter: 'boolean', defaultValue: false, tip: '同时只能展开一个面板' },
+          ],
+        },
+      ],
+    })
+    .registerWidget('Divider', voidPlaceholder, {
+      label: '分割线',
+      category: 'container',
+      icon: 'Minus',
+      isContainer: false,
+      defaultSchema: {
+        type: 'void',
+        'x-component': 'Divider',
+        'x-component-props': {},
+      },
+      propSetters: [
+        {
+          title: '分割线设置',
+          setters: [
+            { key: 'title', label: '标题文本', setter: 'text', tip: '留空则为纯分割线' },
+            {
+              key: 'contentPosition', label: '文本位置', setter: 'select', defaultValue: 'center',
+              options: [
+                { label: '居中', value: 'center' },
+                { label: '左侧', value: 'left' },
+                { label: '右侧', value: 'right' },
+              ],
+            },
+            {
+              key: 'borderStyle', label: '线型', setter: 'select', defaultValue: 'solid',
+              options: [
+                { label: '实线', value: 'solid' },
+                { label: '虚线', value: 'dashed' },
+                { label: '点线', value: 'dotted' },
+              ],
+            },
           ],
         },
       ],

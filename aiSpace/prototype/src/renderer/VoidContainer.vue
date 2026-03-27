@@ -11,6 +11,7 @@
     v-bind="componentProps"
     class="lowcode-void-card mb-4"
     :class="schema['x-class']"
+    :data-field-id="schema['x-id']"
   >
     <template v-if="componentProps.title" #header>
       <span>{{ componentProps.title }}</span>
@@ -30,6 +31,7 @@
     v-bind="componentProps"
     class="lowcode-void-tabs"
     :class="schema['x-class']"
+    :data-field-id="schema['x-id']"
   >
     <template v-for="(paneSchema, paneKey) in schema?.properties" :key="paneKey">
       <el-tab-pane
@@ -54,6 +56,7 @@
     v-bind="componentProps"
     class="lowcode-void-collapse mb-4"
     :class="schema['x-class']"
+    :data-field-id="schema['x-id']"
   >
     <template v-for="(itemSchema, itemKey) in schema?.properties" :key="itemKey">
       <el-collapse-item
@@ -77,6 +80,7 @@
     v-else-if="componentName === 'Divider'"
     v-bind="componentProps"
     :class="schema['x-class']"
+    :data-field-id="schema['x-id']"
   >
     {{ componentProps.title }}
   </el-divider>
@@ -87,6 +91,7 @@
     class="lowcode-void-container"
     :class="schema['x-class']"
     :style="schema['x-style']"
+    :data-field-id="schema['x-id']"
   >
     <FlowLayout
       v-if="schema.properties"

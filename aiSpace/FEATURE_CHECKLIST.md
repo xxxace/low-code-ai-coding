@@ -22,6 +22,7 @@
 | 模块 | 说明 |
 |---|---|
 | `FieldRenderer.vue` | 接入 ComponentRegistry；Select/Checkbox/Radio options 渲染；readPretty 只读模式；designMode 强制可见；隐藏字段半透明+黄虚线；ContainerNode 占位分支（type='container'） |
+| `VoidContainer.vue` | void 容器渲染器（Card/Tabs/Collapse/Divider）；data-field-id 属性 + 选中高亮；子节点递归渲染 |
 | `FlowLayout` | display:flex + flex-wrap；字段宽度 = (x-span / columns) × 100%；支持 1~24 列 |
 | `FreeLayout` | 自由定位组件（left/top/width/height），画布已有 |
 
@@ -29,10 +30,10 @@
 
 | 模块 | 说明 |
 |---|---|
-| `DesignOverlay.vue` | MutationObserver+ResizeObserver DOM 坐标感知叠加层；hover 高亮/选中高亮；操作按钮（上移/下移/复制/删除）；四向边界自适应；HTML5 DnD 拖拽排序（x-order） |
+| `DesignOverlay.vue` | MutationObserver+ResizeObserver DOM 坐标感知叠加层；hover 高亮/选中高亮；操作按钮（上移/下移/复制/删除）；四向边界自适应；HTML5 DnD 拖拽排序（x-order）；跨容器拖拽（moveNodeAcrossContainers 原子操作） |
 | `HistoryManager.ts` | JSON 快照 undo/redo；indexRef 响应式副本（解决 class getter 不被 Vue 追踪） |
-| `designerEngine.ts` | 精简 ~280 行；委托 schemaUtils 8 个纯函数；duplicateNode/moveNode/sortNodes/saveSnapshot |
-| `schemaUtils.ts` | 8 个纯函数，可独立单元测试 |
+| `designerEngine.ts` | 精简 ~300 行；委托 schemaUtils 9 个纯函数；duplicateNode（递归重新生成子节点 x-id）/moveNode/sortNodes/moveNodeToContainer/moveNodeAcrossContainers/saveSnapshot |
+| `schemaUtils.ts` | 9 个纯函数（含 moveNodeAcrossContainers 跨容器移动+排序），可独立单元测试 |
 | `designerBus.ts` | mitt 事件总线，DesignerEvents 类型已定义 |
 | `composables/useMaterialDrag.ts` | 物料拖入画布 Composable |
 | `composables/useKeyboardShortcuts.ts` | 键盘快捷键 Composable |
@@ -52,6 +53,15 @@
 | TypeScript | tsc --noEmit 零错误 |
 | Vite 构建 | vite build 成功（1663 模块，无报错） |
 | 开发服务器 | `npx vite`（prototype/ 目录），端口 5173 |
+| 单元测试 | Vitest 4.1.2 + @vue/test-utils + happy-dom；152 个测试全部通过（schemaUtils 43 / HistoryManager 16 / ComponentRegistry 24 / FormModel 52 / ReactionsEngine 17） |
+
+### 容器组件（VoidContainer）
+
+| 组件 | 说明 |
+|---|---|
+| `VoidContainer.vue` | Card/Tabs/Collapse/Divider 四种容器渲染器 |
+| `defaultRegistry.ts` | 容器组件物料注册（category='container'）；Tabs/Collapse 预置子结构；Card 预置空 properties |
+| 设计器交互 | data-field-id + 选中高亮/操作栏/拖拽排序；跨容器拖拽（容器内↔容器外） |
 
 ---
 
@@ -59,7 +69,7 @@
 
 | 功能 | 现状 | 备注 |
 |---|---|---|
-| ContainerNode / GroupRenderer.vue | Schema 类型已定义，FieldRenderer 有分支，GroupRenderer.vue 未建 | 嵌套渲染未实现 |
+| ContainerNode / GroupRenderer.vue | Schema 类型已定义，FieldRenderer 有分支，GroupRenderer.vue 未建 | 嵌套渲染未实现（VoidFieldSchema 已覆盖 Card/Tabs/Collapse/Divider） |
 | FreeLayout 拖拽移动 + 8方向缩放 | FreeCanvas/FreeLayout 组件存在，deskclaw 已调研方案 | 交互逻辑未实现 |
 | FunctionRegistry 逃生舱 | 接口类型已占位（用户写 setup 函数） | 无实际运行时 |
 | designerBus 消费方 | mitt 实例已建、事件类型已定义 | 目前无任何消费方 |
@@ -72,17 +82,15 @@
 
 | 功能 | 说明 | 优先级 |
 |---|---|---|
-| StdForm 适配层 | 对接 MES 项目 RelationRegister / useArrayRefManager，生产接入最后一环 | 高 |
-| 单元测试 | ReactionsEngine、FormModel、schemaUtils 均可独立测试，测试代码零行 | 高 |
+| 预览模式 | 设计器内切换"运行预览"，隐藏 overlay 和属性面板 | 高 |
+| 导出/导入 Schema | Schema JSON 文件导出与导入，对接后端存储 | 高 |
 | GroupRenderer.vue | ContainerNode 正式渲染，支持嵌套字段 | 中 |
 | FreeLayout 完整交互 | 拖拽移动 + 8方向缩放（deskclaw 已调研方案可直接实现） | 中 |
-| 预览模式 | 设计器内切换"运行预览"，目前无模式切换按钮 | 中 |
-| 导出/导入 Schema | Schema JSON 文件导出与导入 | 中 |
 | x-relation 关系字段 UI | Schema 有 x-relation，属性面板无对应 Setter | 中 |
 | 数据源配置 UI | DataSourceConfig 类型已定义，无设计器界面 | 低 |
 | ComponentRegistry 懒加载 | 大项目按需加载物料（代码分割），目前全量注册 | 低 |
 | 移动端/响应式 breakpoint | 当前布局针对 PC，无 breakpoint 配置 | 低 |
-| Monorepo 拆包 | 设计决策 4 包（core/renderer/designer/stdform），目前仍单包 | 低 |
+| Monorepo 拆包 | 设计决策 3 包（core/renderer/designer），目前仍单包 | 低 |
 
 ---
 
@@ -97,6 +105,8 @@
 | 条件渲染字段在设计时不可见 | ✅ 已修复（designMode provide/inject） |
 | 条件渲染首屏状态不正确 | ✅ 已修复（ReactionsEngine.init() 立即执行一轮） |
 | undo/redo 条件渲染预览缺 otherwise | ✅ 已修复（updateReactionFulfill 自动补充反向状态） |
+| 复制容器节点时子节点 x-id 未重新生成 | ✅ 已修复（regenerateIds 递归函数） |
+| 内嵌节点跨容器拖拽释放后不生效 | ✅ 已修复（moveNodeAcrossContainers 原子操作） |
 
 ---
 
@@ -128,12 +138,20 @@ prototype/src/
       ComponentRegistry.ts
       defaultRegistry.ts
       index.ts
+    __tests__/
+      ComponentRegistry.test.ts
+      FormModel.test.ts
+      ReactionsEngine.test.ts
+      smoke.test.ts
   designer/
     engine/
       schemaUtils.ts
       HistoryManager.ts
       designerEngine.ts
       designerBus.ts
+      __tests__/
+        schemaUtils.test.ts
+        HistoryManager.test.ts
     composables/
       useMaterialDrag.ts
       useKeyboardShortcuts.ts
@@ -145,11 +163,15 @@ prototype/src/
     ReactionEditorDialog.vue
     PropGroup.vue
     OptionsEditor.vue
+    MaterialPalette.vue
   renderer/
     FieldRenderer.vue
     FlowLayout.vue
     FreeLayout.vue
+    VoidContainer.vue
   types/              ← 垫片层，全部 re-export from core/
+  test/
+    setup.ts
   index.ts
   plugin-api.d.ts
 ```

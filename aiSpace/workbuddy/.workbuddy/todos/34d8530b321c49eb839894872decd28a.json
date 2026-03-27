@@ -1,0 +1,36 @@
+{
+  "conversationId": "34d8530b321c49eb839894872decd28a",
+  "todos": [
+    {
+      "id": "schema-utils-move-to-container",
+      "content": "在 schemaUtils.ts 中新增 moveNodeToContainer 纯函数，支持将节点从任意父节点移动到目标容器的 properties 末尾",
+      "dependencies": [],
+      "status": "completed"
+    },
+    {
+      "id": "engine-move-to-container",
+      "content": "在 designerEngine.ts 中新增 moveNodeToContainer 方法，调用 schemaUtils，saveSnapshot 并 emit bus 事件",
+      "dependencies": [
+        "schema-utils-move-to-container"
+      ],
+      "status": "completed"
+    },
+    {
+      "id": "overlay-dnd-upgrade",
+      "content": "使用 [skill:vue] 升级 DesignOverlay.vue：修复 dropIndicator 赋值（实时显示插入指示线）、handleDragOver 计算 before/after/into-container、handleDrop emit 携带 position 第三参数，新增 move-to-container emit 与绿色容器高亮 CSS",
+      "dependencies": [
+        "engine-move-to-container"
+      ],
+      "status": "completed"
+    },
+    {
+      "id": "designer-wiring",
+      "content": "修正 LowcodeDesigner.vue 中 @reorder-nodes 的三参数透传，新增 @move-to-container 绑定调用 engine.moveNodeToContainer",
+      "dependencies": [
+        "overlay-dnd-upgrade"
+      ],
+      "status": "completed"
+    }
+  ],
+  "updatedAt": 1774594943478
+}

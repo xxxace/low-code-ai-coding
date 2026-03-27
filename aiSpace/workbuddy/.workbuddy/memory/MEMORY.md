@@ -31,7 +31,7 @@
 | 布局 | 双布局（flow + free）统一在一套 Schema | 避免维护两套格式，按 layoutMode 切换 |
 | 关系字段 | x-relation 扩展，对接 RelationRegister | MES 业务特有需求，已有 StdForm 基础设施 |
 | 历史记录 | JSON 快照模式（snapshots[] + index） | 简单可靠，visual-drag-demo 验证过 |
-| 包结构 | 4 包 Monorepo（core/renderer/designer/stdform） | 依赖单向，渲染器可独立使用 |
+| 包结构 | 3 包 Monorepo（core/renderer/designer） | StdForm 已移除规划 |
 
 ## 编码规范
 
@@ -43,124 +43,21 @@
 - 异步：async/await + try-catch
 - 禁止使用 var，禁止直接操作 DOM
 
-## 当前进度（2026-03-26，第三阶段完成）
+## 当前进度（2026-03-27，第十五阶段完成 + Bug 修复）
 
-第三阶段已完成（自检雕琢）：
-- ✅ model.ts：修复 reactive(Map) 响应式追踪失效 → 改用 reactive(Record)；修复 getAllFields() 返回类型；补充 ArrayField 初始化、setValues、getErrors
-- ✅ reactions.ts：添加 CycleDetector 防止循环联动；使用 flush:'post' 避免渲染期副作用；大幅加强沙箱安全（屏蔽 window/document/eval/Function 等危险全局对象）
-- ✅ componentRegistry.ts（新建）：ComponentRegistry 类，支持 Widget/Decorator 注册、物料元信息、Vue provide/inject 集成、内置 Element Plus 组件默认注册（共 20+ 组件）
-- ✅ FieldRenderer.vue：接入 ComponentRegistry；支持 Select/Checkbox/Radio 的 options 渲染；新增 readPretty 只读展示模式；补充 data-field-id 属性
-- ✅ DesignOverlay.vue：重写为 MutationObserver + ResizeObserver DOM 坐标感知叠加层；hover 高亮/选中高亮/操作按钮（上移/下移/复制/删除）/拖拽指示线
-- ✅ designerEngine.ts：添加 duplicateNode/moveNode/sortNodes/saveSnapshot（公开）；修复 layoutMode 更新逻辑（不再调用错误的 updateNodeProps）
-- ✅ Vite 开发环境：package.json + vite.config.ts + tsconfig.json + index.html + main.ts + App.vue（三标签演示页）
-- ✅ useDragSort.ts（新建）：HTML5 DnD 拖拽排序 Composable，无外部依赖
+**已完成全部功能（15 个阶段）**，详见 `FEATURE_CHECKLIST.md`。
+
+核心能力：
+- core/ 全部模块（schema/model/reactions/registry）
+- renderer/（FieldRenderer/FlowLayout/FreeLayout/VoidContainer）
+- designer/ 全部 UI 组件 + engine + composables
+- 容器组件（Card/Tabs/Collapse/Divider）物料注册 + 设计器交互
+- 跨容器拖拽（容器内↔容器外，原子操作 moveNodeAcrossContainers）
+- 单元测试 152 个全部通过（schemaUtils 43 / HistoryManager 16 / ComponentRegistry 24 / FormModel 52 / ReactionsEngine 17）
+- TypeScript 零错误，Vite 构建成功
+
+**StdForm 适配层已从规划中移除**（用户要求）。
+**Monorepo 包结构从 4 包调整为 3 包**（core/renderer/designer，移除 stdform）。
 
 开发服务器：`http://localhost:5173`（在 prototype/ 目录运行 npx vite）
-TypeScript 类型检查：零错误
-
-## 工作空间优化（2026-03-26）
-执行奥卡姆剃刀清理任务：
-- ✅ 清理构建产物：删除 prototype/dist/ 目录
-- ✅ 分析目录结构：确认 aiSpace/ 为核心工作区，template/ 为示例代码区
-- ✅ 检查冗余文件：未发现明显重复或过时文件
-- ✅ 创建优化报告：生成《奥卡姆剃刀清理报告.md》包含5项优化建议
-- 关键发现：工作空间结构良好，主要文件为 template/mes/ 中的示例代码
-
-## 第八阶段（2026-03-26）：交互增强与 Bug 修复
-
-- ✅ DesignOverlay：操作栏边界自适应（靠近顶部时显示在字段下方）
-- ✅ DesignOverlay：操作栏新增快速列宽按钮（6/8/12/16/24），点击直接更新 x-span
-- ✅ DesignOverlay：HTML5 DnD 拖拽排序，拖拽字段交换 x-order，drag-over 黄色指示
-- ✅ PageProperties：布局列数快速选择（不限/2列/3列/4列），快速操作提示面板
-- ✅ reactions.ts：沙箱修复 —— `eval` 不能作为 strict mode 形参名，改为 `__sandbox_eval__`，修复 `when: '$self.value === true'` 的 SyntaxError
-
-## 第九阶段（2026-03-26）：布局重构 + 操作栏四向边界
-
-- ✅ FlowLayout 重构：`display:grid 24列` → `display:flex flex-wrap`；字段宽度 = `(x-span / columns) * 100%`
-- ✅ x-span 语义变更：原来表示 grid 列数（1-24），现在表示「占 columns 总列数中的几列」（默认1）
-- ✅ FormRenderer：传 `:columns="formConfig.columns ?? 1"` 给 FlowLayout（修复修改列数无反应的Bug）
-- ✅ PageProperties：布局列数改为 1/2/3/4（直接列数）
-- ✅ DesignOverlay：`getActionsStyle()` 函数统一四向边界检测，操作栏始终在画布内可见
-- ✅ 奥卡姆剃刀：移除操作栏快速列宽按钮（非必要功能）
-
-## 第十阶段（2026-03-26）：columns 响应式根治 + 自定义列数输入
-
-- ✅ `handlePagePropsUpdate` 改为原地修改（`Object.assign(engine.schema.value.formConfig, ...)`），不再深拷贝替换整个 schema 对象，彻底解决 Vue reactive proxy 被新 plain object 覆盖导致响应式失效的问题
-- ✅ 布局列数 UI 升级：快捷按钮（1/2/3/4）+ el-input-number 自定义输入框（1-24），共享同一 `form.columns`
-
-## 第十一阶段（2026-03-26）：条件渲染可见性 + Property Setter 体系
-
-### 条件渲染字段设计时不可见问题
-- **方案**：`FormRenderer` 新增 `designMode` prop，通过 `provide('designMode', true)` 传给所有子组件
-- `FieldRenderer` 注入 `designMode`，当为 true 时强制 `display !== 'none'` 为可见（忽略联动）
-- hidden 状态字段在设计模式下显示为半透明 + 黄色虚线边框（提示有隐藏规则）
-
-### Property Setter 体系
-- **类型**：在 `WidgetMeta` 里新增 `propSetters?: PropSetterGroup[]`，每个 Setter 有 key/label/setter/options/tip
-- **Setter 类型**：text / number / boolean / select / options / code / json
-- **组件覆盖**：为全部 16 个注册组件（Input/Textarea/InputNumber/Password/Select/Cascader/TreeSelect/CheckboxGroup/RadioGroup/DatePicker/DateRangePicker/TimePicker/DateTimePicker/Switch/Slider/Rate/ColorPicker/Upload）配置了专属 propSetters
-- **新组件**：`PropGroup.vue`（带折叠的属性分组）、`OptionsEditor.vue`（枚举选项编辑器）
-- **FieldProperties 重构**：从硬编码改为动态渲染；顶部增加字段类型标识徽章；联动规则增加"结果类型"下拉（visible/hidden/disabled/readOnly/required）
-
-## 第十二阶段（2026-03-26）：条件渲染预览、undo/redo、type 属性三项修复
-
-- ✅ 条件渲染预览：`updateReactionFulfill` 自动补充 otherwise（反向状态）；ReactionsEngine.init() 新增立即执行一轮机制，确保首屏条件渲染状态正确
-- ✅ undo/redo 按钮：HistoryManager 加 `indexRef: Ref<number>` 响应式副本，canUndo/canRedo computed 依赖它，彻底解决 class getter 不被 Vue 追踪的问题
-- ✅ 属性面板值类型：FieldProperties 基础属性区新增「值类型」下拉（string/number/boolean/array/object/integer）
-
-## 第十三阶段（2026-03-27）：联动规则体验重构
-
-- ✅ 新建 `ReactionEditorDialog.vue`：联动规则编辑弹窗，直接编辑 `when` 表达式字符串（不区分 $self/$deps），支持目标字段（target）输入
-- ✅ `FieldProperties` 联动规则区改为摘要模式：「共 N 条规则 + 编辑按钮」+ 每条一行只读摘要卡片（when → 效果），不再内联展开
-- ✅ `ReactionEditorDialog` 升级为三区布局：顶栏搜索+新增、左侧规则名称列表（颜色徽章+条件预览）、右侧详情编辑（名称/备注/条件/依赖/目标/效果）；schema.ts Reaction 新增 name/remark 字段
-- ✅ 规则启用/禁用机制：Reaction 接口加 `enabled?: boolean`；引擎 `_executeReaction` 跳过 enabled===false 的规则；左侧徽章改为绿=启用/灰=禁用；右侧顶部加 toggle 按钮；效果类型精简（去掉只读，保留显示/隐藏/禁用字段/必填/取消必填）
-
-## 第十四阶段（2026-03-27）：架构重构 —— core/ 分层 + 垫片兼容
-
-### 新目录结构
-```
-src/
-  core/
-    schema.ts          # Schema 定义（新增 I18nString/ContainerNode/SchemaNode/DataSourceConfig）
-    model.ts           # FormModel
-    reactions.ts       # ReactionsEngine（SANDBOX_BLOCKED_GLOBALS 消除三处重复）
-    registry/
-      registryTypes.ts # 纯类型：WidgetMeta/FunctionRegistry（逃生舱占位）
-      ComponentRegistry.ts  # 注册表核心类
-      defaultRegistry.ts    # Element Plus 20+ 组件默认注册
-      index.ts         # re-export
-  designer/
-    engine/
-      schemaUtils.ts   # 8个纯函数（可独立单元测试）
-      HistoryManager.ts
-      designerEngine.ts # 精简为 ~280 行（委托给 schemaUtils）
-      designerBus.ts   # mitt 事件总线（DesignerEvents）
-    composables/
-      useMaterialDrag.ts
-      useKeyboardShortcuts.ts
-  types/               # 垫片层：4 个文件均为 export * from '../core/xxx'
-  renderer/
-    FieldRenderer.vue  # 新增 ContainerNode 占位分支（type='container'）
-  index.ts             # 更新为从 core/ 导出，新增所有新类型和 schemaUtils/designerBus
-  plugin-api.d.ts      # 纯类型插件 API 契约
-```
-
-### 关键决策
-- **垫片模式**：`types/` 4 个文件全部改为 `export * from '../core/xxx'`，现有 import 不需要改
-- **单向依赖链**：core → renderer → designer，core 不依赖 designer
-- **ContainerNode**：Schema 树支持容器节点（无限嵌套），FieldRenderer 加占位分支
-- **I18nString**：`{ zh: string; en?: string }` + `resolveLocalizedString()` 工具函数
-- **FunctionRegistry**：接口占位，为"用户写 setup 函数"逃生舱预留
-- **designerBus**：基于 mitt，为插件体系打地基
-- **plugin-api.d.ts**：插件 API 契约，零运行时代价
-
-### 构建状态
-- TypeScript tsc --noEmit：零错误
-- vite build：✅ 成功（1663 模块，仅有 chunk size 警告，非错误）
-
-下一步（第四阶段候选）：
-- 实现 StdForm 适配层（连接现有 MES 项目的 RelationRegister / useArrayRefManager）
-- 编写单元测试（ReactionsEngine、FormModel、schemaUtils）
-- FreeLayout 的拖拽移动 + 8方向缩放（deskclaw 已调研方案，可直接实现）
-- ComponentRegistry 的懒加载支持（代码分割）
-- GroupRenderer.vue 实现（ContainerNode 正式渲染）
+运行测试：`cd prototype && npx vitest run`

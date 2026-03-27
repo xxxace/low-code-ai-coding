@@ -130,6 +130,18 @@ export function updateNodeById(
 // ============================================================
 
 /**
+ * 递归重新生成节点树中所有节点的 x-id（包括自身）
+ */
+function regenerateIds(node: FieldSchema, generateId: () => string): void {
+  node['x-id'] = generateId()
+  if ('properties' in node && node.properties) {
+    for (const child of Object.values(node.properties)) {
+      regenerateIds(child, generateId)
+    }
+  }
+}
+
+/**
  * 按 x-id 复制节点（克隆后插入同级末尾）
  * @param generateId ID 生成器（由 caller 注入，避免依赖外部状态）
  * @returns 是否找到并复制
@@ -145,7 +157,7 @@ export function duplicateNodeById(
   for (const [key, fieldSchema] of Object.entries(properties)) {
     if (fieldSchema['x-id'] === nodeId) {
       const cloned = JSON.parse(JSON.stringify(fieldSchema)) as FieldSchema
-      cloned['x-id'] = generateId()
+      regenerateIds(cloned, generateId)
 
       const maxOrder = Math.max(
         0,
@@ -401,4 +413,84 @@ export function updateNodeFreeSizeById(
     }
   }
   return false
+}
+
+// ============================================================
+// 跨容器移动 + 排序
+// ============================================================
+
+/**
+ * 跨容器移动节点并排序（原子操作）
+ *
+ * 场景：将容器内的节点拖到容器外（或从根层拖入容器内其他节点旁）。
+ * 先从原 parent 摘除，插入目标 parent 的 properties，再按 before/after 排序。
+ *
+ * @returns 是否成功
+ */
+export function moveNodeAcrossContainers(
+  rootSchema: SchemaWithProperties,
+  nodeId: string,
+  targetId: string,
+  position: 'before' | 'after'
+): boolean {
+  if (nodeId === targetId) return false
+
+  const rootProps = 'properties' in rootSchema ? rootSchema.properties : null
+  if (!rootProps) return false
+
+  // --- 第一步：找到源节点及其父 properties ---
+  let sourceNode: FieldSchema | null = null
+  let sourceKey: string | null = null
+  let sourceParentProps: Record<string, FieldSchema> | null = null
+
+  function findSource(props: Record<string, FieldSchema>): boolean {
+    for (const [key, fieldSchema] of Object.entries(props)) {
+      if (fieldSchema['x-id'] === nodeId) {
+        sourceNode = fieldSchema
+        sourceKey = key
+        sourceParentProps = props
+        return true
+      }
+      if ('properties' in fieldSchema && fieldSchema.properties) {
+        if (findSource(fieldSchema.properties as Record<string, FieldSchema>)) return true
+      }
+    }
+    return false
+  }
+
+  if (!findSource(rootProps)) return false
+  if (!sourceNode || !sourceKey || !sourceParentProps) return false
+
+  // --- 第二步：找到目标节点及其父 properties ---
+  let targetParentProps: Record<string, FieldSchema> | null = null
+
+  function findTargetParent(props: Record<string, FieldSchema>): boolean {
+    for (const [key, fieldSchema] of Object.entries(props)) {
+      if (fieldSchema['x-id'] === targetId) {
+        targetParentProps = props
+        return true
+      }
+      if ('properties' in fieldSchema && fieldSchema.properties) {
+        if (findTargetParent(fieldSchema.properties as Record<string, FieldSchema>)) return true
+      }
+    }
+    return false
+  }
+
+  if (!findTargetParent(rootProps)) return false
+  if (!targetParentProps) return false
+
+  // --- 第三步：从原 parent 摘除 ---
+  delete sourceParentProps[sourceKey]
+
+  // --- 第四步：插入目标 parent，处理 key 冲突 ---
+  let newKey = sourceKey
+  if (newKey in targetParentProps) {
+    newKey = `${sourceKey}_${Date.now()}`
+  }
+
+  targetParentProps[newKey] = sourceNode
+
+  // --- 第五步：在目标 parent 内排序 ---
+  return sortNodesInSchema(rootSchema, nodeId, targetId, position)
 }

@@ -121,10 +121,16 @@
                   (nodeId, dir) => engine.moveNode(nodeId, dir as 'up' | 'down')
                 "
                 @reorder-nodes="
-                  (fromId, toId, position) => engine.sortNodes(fromId, toId, position)
+                  (fromId, toId, position) =>
+                    engine.sortNodes(fromId, toId, position)
                 "
                 @move-to-container="
-                  (nodeId, containerId) => engine.moveNodeToContainer(nodeId, containerId)
+                  (nodeId, containerId) =>
+                    engine.moveNodeToContainer(nodeId, containerId)
+                "
+                @move-across-containers="
+                  (nodeId, targetId, position) =>
+                    engine.moveNodeAcrossContainers(nodeId, targetId, position)
                 "
               />
             </template>
@@ -432,7 +438,8 @@ function copyCode(): void {
 .properties-content {
   flex: 1;
   padding: 12px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .code-preview {

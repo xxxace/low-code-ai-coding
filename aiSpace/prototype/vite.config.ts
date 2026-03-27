@@ -18,4 +18,17 @@ export default defineConfig({
   optimizeDeps: {
     include: ['vue', 'element-plus', '@element-plus/icons-vue', 'pinia'],
   },
+
+  // ---- Vitest 测试配置 ----
+  test: {
+    globals: true,
+    environment: 'happy-dom',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    setupFiles: ['src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/core/**', 'src/designer/engine/**'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
+    },
+  },
 })
