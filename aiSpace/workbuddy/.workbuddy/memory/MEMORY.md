@@ -34,6 +34,18 @@
 | 历史记录 | JSON 快照模式（snapshots[] + index） | 简单可靠，visual-drag-demo 验证过 |
 | 包结构 | 3 包 Monorepo（core/renderer/designer） | StdForm 已移除规划 |
 
+## 2026-03-28 BUG 修复记录
+
+### 问题1：absolute 容器双层操作框
+- 文件：`renderer/VoidContainer.vue`
+- 修复：absolute 模式下隐藏 VoidContainer 的 design-actions（第24行添加 `&& !isAbsoluteMode`）
+- 理由：AbsoluteNodeOverlay 已处理 absolute 节点的操作框，避免重复
+
+### 问题2：属性面板节点切换误更新
+- 文件：`designer/FieldProperties.vue`
+- 修复：添加 `currentNodeId` 跟踪 form 同步状态，emitUpdate 前检查同步性
+- 理由：watch 回调异步执行，可能在用户触发 @change 时 form 还未同步到新节点
+
 ## 编码规范
 
 见 `D:\demo\ai\aiSpace\编码风格总结.md`。关键规范：
