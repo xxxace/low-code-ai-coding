@@ -267,20 +267,23 @@ interface FlatNode {
   isContainer: boolean
   /** 父节点 x-id，根层节点为 '__root__' */
   parentId: string
+  /** 定位类型：'relative' | 'absolute' */
+  positionType: 'relative' | 'absolute'
 }
 
 const flatNodes = computed<FlatNode[]>(() => {
   const nodes: FlatNode[] = []
 
   function walk(properties: Record<string, FieldSchema>, parentId: string) {
-    for (const [, schema] of Object.entries(properties)) {
-      // 过滤掉绝对定位节点（由 AbsoluteNodeOverlay 单独处理）
-      if (schema['x-id'] && schema['x-position-type'] !== 'absolute') {
+    for (const [key, schema] of Object.entries(properties)) {
+      // 包含所有节点（包括 absolute 容器），用于流式节点拖拽到容器的交互
+      if (schema['x-id']) {
         nodes.push({
           id: schema['x-id'],
           label: schema.title ?? schema['x-component'] ?? '未知',
           isContainer: schema.type === 'void' || schema.type === 'object',
           parentId,
+          positionType: schema['x-position-type'] ?? 'relative', // 新增：记录定位类型
         })
       }
       if ('properties' in schema && schema.properties) {
@@ -308,6 +311,17 @@ function refreshOverlay(): void {
   const items: OverlayItem[] = []
 
   for (const node of flatNodes.value) {
+    // 过滤 absolute 非容器节点（由 AbsoluteNodeOverlay 单独处理）
+    // 过滤被选中的 absolute 容器（由 AbsoluteNodeOverlay 处理选中状态）
+    // 保留 relative 节点和未选中的 absolute 容器（用于 hover/dragover/drop 交互）
+    if (node.positionType === 'absolute') {
+      if (node.isContainer && node.id !== props.selectedNodeId) {
+        // absolute 容器但未选中，保留用于 hover/drop 交互
+      } else {
+        continue
+      }
+    }
+
     // 通过 data-field-id 属性查找 DOM 节点
     const el = props.canvasEl.querySelector<HTMLElement>(
       `[data-field-id="${node.id}"]`
@@ -616,6 +630,7 @@ defineExpose({
   inset: 0;
   pointer-events: none;
   overflow: visible;
+  z-index: 100; /* 确保覆盖 absolute 容器和 Element Plus 组件 */
 }
 
 .design-overlay__item {
@@ -626,6 +641,7 @@ defineExpose({
   border: 1px dashed transparent;
   border-radius: 2px;
   transition: border-color 0.15s;
+  z-index: 101; /* 比容器本身高一层，确保覆盖容器内的子元素 */
 }
 
 /* hover 状态 */
