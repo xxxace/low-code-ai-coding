@@ -56,7 +56,7 @@
 import { computed, inject, provide, type CSSProperties } from 'vue'
 import type { FieldSchema } from '../core/schema'
 import type { FormModel } from '../core/model'
-import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY, injectDesignerEngine } from '../core/injectionKeys'
+import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY, injectDesignMode, injectDesignerEngine } from '../core/injectionKeys'
 import FieldRenderer from './FieldRenderer.vue'
 import VoidContainer from './VoidContainer.vue'
 
@@ -87,14 +87,22 @@ const props = withDefaults(defineProps<Props>(), {
 
 const designerEngine = injectDesignerEngine(null)
 
+/** 注入设计模式（来自上层 FormRenderer 或直接祖先） */
+const designMode = injectDesignMode(false)
+
 // ============================================================
 // 向子组件注入选中节点 ID（用于 Flow 节点高亮）
 // ============================================================
 
-provide(SELECTED_NODE_ID_KEY, computed(() => designerEngine?.selectedNodeId.value ?? null))
+// 只在设计模式下将真实 selectedNodeId 透传下去
+// 预览模式（designMode = false）时，selectedNodeId 始终为 null，
+// 防止预览弹窗通过 inject 穿透到设计器的 engine.selectedNodeId
+provide(SELECTED_NODE_ID_KEY, computed(() =>
+  designMode.value ? (designerEngine?.selectedNodeId.value ?? null) : null
+))
 
-/** 设计模式注入（让子组件知道是否在设计器中） */
-provide(DESIGN_MODE_KEY, computed(() => true))
+/** 向子组件透传设计模式（不硬编码 true，保留预览模式语义） */
+provide(DESIGN_MODE_KEY, computed(() => designMode.value))
 
 // ============================================================
 // 计算属性

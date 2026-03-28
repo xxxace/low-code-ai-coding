@@ -38,7 +38,7 @@ import type { PageSchema } from '../types/schema'
 import { createFormModel, type FormModel } from '../types/model'
 import { createReactionsEngine, type ReactionsEngine } from '../types/reactions'
 import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
-import { DESIGN_MODE_KEY } from '../core/injectionKeys'
+import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY } from '../core/injectionKeys'
 import XLayout from './XLayout.vue'
 
 // ============================================================
@@ -200,6 +200,9 @@ provide('formRenderer', {
 })
 // 设计模式标识，供 FieldRenderer 等子组件注入使用
 provide(DESIGN_MODE_KEY, computed(() => props.designMode))
+// 预览模式下，selectedNodeId 始终为 null，防止 inject 穿透到设计器画布的 XLayout
+// 设计模式下，XLayout 会覆盖这个 provide，提供真实的 selectedNodeId
+provide(SELECTED_NODE_ID_KEY, ref(null))
 
 // 注入 ComponentRegistry（从父组件获取或创建默认的）
 const componentRegistry = useComponentRegistry()

@@ -13,7 +13,9 @@
   - 本方案每个 overlay-item 的 pointer-events 独立控制
 -->
 <template>
+  <!-- 非设计模式下不渲染叠加层 -->
   <div
+    v-if="designMode"
     ref="overlayRef"
     class="design-overlay"
     @mouseleave="handleMouseLeave"
@@ -23,7 +25,6 @@
       <div
         class="design-overlay__item"
         :class="{
-          'design-overlay__item--selected': item.nodeId === selectedNodeId,
           'design-overlay__item--hovered': item.nodeId === hoveredNodeId && item.nodeId !== selectedNodeId,
           'design-overlay__item--container': item.isContainer,
           'design-overlay__item--draggable': isFreeLayout && item.nodeId === selectedNodeId,
@@ -41,9 +42,10 @@
         @dragleave.stop="handleDragLeave(item.nodeId, $event)"
         @drop.stop="handleDrop(item.nodeId)"
       >
-        <!-- 操作按钮（选中时显示）—— 四向边界感知，始终显示在画布内 -->
+        <!-- 操作按钮（选中时显示）—— 所有流式布局节点（relative）和 absolute 非容器节点 -->
+        <!-- absolute 容器节点由 AbsoluteNodeOverlay 单独处理，避免双层显示 -->
         <div
-          v-if="item.nodeId === selectedNodeId"
+          v-if="item.nodeId === selectedNodeId && !(item.positionType === 'absolute' && item.isContainer)"
           class="design-overlay__actions"
           :style="getActionsStyle(item)"
         >
@@ -133,6 +135,8 @@ interface Props {
   selectedNodeId: string | null
   /** 画布 DOM 容器（用于计算相对坐标） */
   canvasEl: HTMLElement | null
+  /** 是否处于设计模式 */
+  designMode?: boolean
 }
 
 const props = defineProps<Props>()
@@ -226,6 +230,7 @@ interface OverlayItem {
   nodeId: string
   label: string
   isContainer: boolean
+  positionType: 'relative' | 'absolute'
   style: CSSProperties
 }
 
@@ -307,6 +312,11 @@ function refreshOverlay(): void {
       }
     }
 
+    // 不再完全过滤容器节点
+    // - relative 容器：保留用于拖拽排序，操作按钮由 VoidContainer 内部处理
+    // - absolute 容器（未选中）：保留用于 hover/drop
+    // - absolute 容器（已选中）：跳过（由 AbsoluteNodeOverlay 处理）
+
     // 通过 data-field-id 属性查找 DOM 节点
     const el = props.canvasEl.querySelector<HTMLElement>(
       `[data-field-id="${node.id}"]`
@@ -325,6 +335,7 @@ function refreshOverlay(): void {
       nodeId: node.id,
       label: node.label,
       isContainer: node.isContainer,
+      positionType: node.positionType,
       style: {
         position: 'absolute',
         left: `${relLeft}px`,

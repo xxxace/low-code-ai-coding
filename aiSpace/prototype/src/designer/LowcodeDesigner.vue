@@ -118,6 +118,7 @@
             :schema="currentSchema"
             :selected-node-id="engine.selectedNodeId.value"
             :canvas-el="canvasRef"
+            :design-mode="true"
             @select-node="engine.selectNode"
             @remove-node="handleRemoveNode"
             @duplicate-node="handleDuplicateNode"

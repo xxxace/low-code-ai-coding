@@ -320,7 +320,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, inject } from "vue";
+import { reactive, ref, computed, watch, inject, toRaw } from "vue";
 import type { FieldSchema, Reaction } from "../types/schema";
 import {
   COMPONENT_REGISTRY_KEY,
@@ -414,7 +414,11 @@ const currentOptions = computed<OptionItem[]>(() => {
 });
 
 function handleOptionsChange(options: OptionItem[]) {
-  emit("update", props.nodeId, {
+  // 同样需要检查同步状态
+  if (currentNodeId.value !== props.nodeId) {
+    return;
+  }
+  emit("update", currentNodeId.value, {
     enum: options.map((o) => o.value),
     enumNames: options.map((o) => o.label),
   });
@@ -470,6 +474,13 @@ const hasPlaceholder = computed(() => {
 // 监听 schema 变化（切换选中节点时刷新面板）
 // ============================================================
 
+/**
+ * 跟踪 form 当前同步的节点 ID
+ * 只有当 currentNodeId === props.nodeId 时，emitUpdate 才应该触发
+ * 这样可以避免在 watch 回调完成前，用户的编辑被写入错误的节点
+ */
+const currentNodeId = ref(props.nodeId);
+
 watch(
   () => props.schema,
   (schema) => {
@@ -492,6 +503,16 @@ watch(
       delete componentPropsForm[key];
     }
     Object.assign(componentPropsForm, cp);
+
+    // 同步 position 相关字段
+    form.positionType = schema["x-position-type"] ?? "relative";
+    form.positionX = schema["x-position"]?.x ?? 0;
+    form.positionY = schema["x-position"]?.y ?? 0;
+    form.positionWidth = schema["x-position"]?.width ?? 200;
+    form.positionHeight = schema["x-position"]?.height ?? 40;
+
+    // form 同步完成后，更新 currentNodeId
+    currentNodeId.value = props.nodeId;
   },
   { deep: true },
 );
@@ -501,6 +522,12 @@ watch(
 // ============================================================
 
 function emitUpdate() {
+  // 防护：只有当 form 与当前节点同步后才允许触发更新
+  // 防止用户点击新节点后，watch 回调还未执行时就触发了 @change
+  if (currentNodeId.value !== props.nodeId) {
+    return;
+  }
+
   // 合并 componentPropsForm，排除 __options__（由 OptionsEditor 单独处理）
   const mergedComponentProps: Record<string, any> = {};
   for (const [k, v] of Object.entries(componentPropsForm)) {
@@ -542,7 +569,8 @@ function emitUpdate() {
   if (form.minLength !== null) updates.minLength = form.minLength;
   if (form.maxLength !== null) updates.maxLength = form.maxLength;
 
-  emit("update", props.nodeId, updates);
+  // 使用 currentNodeId 确保写入正确的节点
+  emit("update", currentNodeId.value, updates);
 }
 
 /**

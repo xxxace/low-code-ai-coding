@@ -14,45 +14,20 @@
   <div
     ref="voidWrapperRef"
     class="void-wrapper"
-    :class="[selectedClass, designMode ? 'design-mode' : '']"
+    :class="[
+      selectedClass,
+      designMode ? 'design-mode' : '',
+      isDragOver ? 'void-wrapper--drag-over' : ''
+    ]"
     :style="wrapperStyle"
     :data-field-id="schema['x-id']"
     @click="handleClick"
+    @dragover.prevent="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop.prevent="handleDrop"
   >
-    <!-- 操作按钮（选中时显示） -->
-    <el-tooltip
-      v-if="designMode && isSelected"
-      content="复制节点"
-      placement="top"
-    >
-      <div class="design-actions">
-        <span class="design-actions__label">{{
-          schema["x-component-props"]?.title ?? componentName
-        }}</span>
-        <button
-          class="design-actions__btn"
-          title="复制"
-          @click.stop="handleDuplicate"
-        >
-          <el-icon><CopyDocument /></el-icon>
-        </button>
-        <button
-          class="design-actions__btn design-actions__btn--danger"
-          title="删除"
-          @click.stop="handleRemove"
-        >
-          <el-icon><Delete /></el-icon>
-        </button>
-      </div>
-    </el-tooltip>
-    <!-- Hover 时显示物料名称（未选中时） -->
-    <el-tooltip
-      v-else-if="designMode"
-      :content="schema['x-component-props']?.title ?? componentName"
-      placement="top"
-    >
-      <div class="design-hover-placeholder" />
-    </el-tooltip>
+    <!-- 操作按钮（流式布局）由 DesignOverlay 叠加层统一处理，不在此处渲染 -->
+    <!-- absolute 容器由 AbsoluteNodeOverlay 处理 -->
 
     <!-- Card 容器 -->
     <el-card
@@ -161,8 +136,7 @@ import {
   ref,
   type CSSProperties,
 } from "vue";
-import { ElTooltip } from "element-plus";
-import { Delete, CopyDocument } from "@element-plus/icons-vue";
+// element-plus 组件由模板直接使用（Auto Import），此处无需显式 import
 import type { VoidFieldSchema } from "../types/schema";
 import type { FormModel } from "../core/model";
 import { injectDesignMode, injectSelectedNodeId, injectDesignerEngine } from "../core/injectionKeys";
@@ -328,18 +302,75 @@ function handleClick(): void {
   }
 }
 
-/** 复制节点 */
-function handleDuplicate(): void {
-  const nodeId = props.schema["x-id"];
-  if (!nodeId || !designerEngine) return;
-  designerEngine.duplicateNode(nodeId);
+// ============================================================
+// 拖拽处理（流式布局容器）
+// ============================================================
+
+/** 拖拽进入容器（用于显示 drop 状态） */
+const isDragOver = ref(false);
+let dragEnterCounter = 0; // 解决 dragenter/dragleave 冒泡问题
+
+function handleDragOver(e: DragEvent): void {
+  if (!designMode.value || isAbsoluteMode.value) return;
+  // 只处理从物料面板拖入的新节点（没有 nodeId）
+  const dataTransfer = e.dataTransfer;
+  if (!dataTransfer) return;
+  // 检查是否是拖拽新物料
+  const raw = dataTransfer.getData('material');
+  if (raw) {
+    dragEnterCounter++;
+    isDragOver.value = true;
+  }
 }
 
-/** 删除节点 */
-function handleRemove(): void {
+function handleDragLeave(): void {
+  dragEnterCounter--;
+  if (dragEnterCounter <= 0) {
+    dragEnterCounter = 0;
+    isDragOver.value = false;
+  }
+}
+
+/** 接收拖拽的节点 */
+function handleDrop(e: DragEvent): void {
+  isDragOver.value = false;
+  dragEnterCounter = 0;
+
+  // 只处理流式布局容器
+  if (!designMode.value || isAbsoluteMode.value || !designerEngine) return;
+
+  const dataTransfer = e.dataTransfer;
+  if (!dataTransfer) return;
+
   const nodeId = props.schema["x-id"];
-  if (!nodeId || !designerEngine) return;
-  designerEngine.removeNode(nodeId);
+  if (!nodeId) return;
+
+  // 情况1：从物料面板拖入新节点
+  const raw = dataTransfer.getData('material');
+  if (raw) {
+    try {
+      const material = JSON.parse(raw);
+      const fieldKey = `field_${Date.now()}`;
+      const fieldSchema: Record<string, unknown> = {
+        ...(material.defaultSchema ?? {}),
+        title: material.label ?? material.name,
+        'x-id': designerEngine.generateNodeId(),
+        'x-position-type': 'relative',
+        'x-span': 1,
+      };
+      // 添加为容器子节点
+      designerEngine.addNode(nodeId, fieldKey, fieldSchema);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
+  // 情况2：拖拽已有节点进入容器
+  const fromId = dataTransfer.getData('node-id');
+  if (fromId && fromId !== nodeId) {
+    designerEngine.moveNodeToContainer(fromId, nodeId);
+  }
 }
 </script>
 
@@ -380,65 +411,11 @@ function handleRemove(): void {
   background: rgba(64, 158, 255, 0.05);
 }
 
-/** 操作按钮容器 */
-.design-actions {
-  display: none;
-  position: absolute;
-  top: -32px;
-  right: 0;
-  align-items: center;
-  gap: 2px;
-  background: #409eff;
-  border-radius: 3px;
-  padding: 3px 6px;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  z-index: 1000;
-}
-
-.void-container--selected .design-actions {
-  display: flex;
-}
-
-/** Hover 时的占位元素（用于触发 tooltip） */
-.design-hover-placeholder {
-  position: absolute;
-  top: -20px;
-  right: 0;
-  height: 20px;
-  width: 1px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.design-actions__label {
-  font-size: 11px;
-  color: #fff;
-  margin-right: 4px;
-  line-height: 1;
-}
-
-.design-actions__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 2px;
-  padding: 0;
-  transition: background 0.15s;
-}
-
-.design-actions__btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.design-actions__btn--danger:hover {
-  background: #f56c6c;
+/** 拖拽进入容器时的视觉反馈 */
+.void-wrapper--drag-over {
+  outline: 2px dashed #67c23a;
+  outline-offset: 2px;
+  background: rgba(103, 194, 58, 0.1);
 }
 
 /** 隐藏 CollapseItem 的展开箭头（设计模式下不需要） */

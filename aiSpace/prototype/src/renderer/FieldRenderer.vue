@@ -49,24 +49,10 @@
       :data-field-path="path"
       :data-field-id="schema['x-id']"
       @click="handleWrapperClick">
-      <!-- 操作按钮（选中时显示，仅流式布局；绝对定位节点由 AbsoluteNodeOverlay 处理） -->
-      <template v-if="!isAbsoluteMode">
-        <el-tooltip v-if="designMode && isSelected" content="复制节点" placement="top">
-          <div class="design-actions">
-            <span class="design-actions__label">{{ schema.title ?? schema['x-component'] }}</span>
-            <button class="design-actions__btn" title="复制" @click.stop="handleDuplicate">
-              <el-icon><CopyDocument /></el-icon>
-            </button>
-            <button class="design-actions__btn design-actions__btn--danger" title="删除" @click.stop="handleRemove">
-              <el-icon><Delete /></el-icon>
-            </button>
-          </div>
-        </el-tooltip>
-        <!-- Hover 时显示物料名称（未选中时） -->
-        <el-tooltip v-else-if="designMode" :content="schema.title ?? schema['x-component']" placement="top">
-          <div class="design-hover-placeholder" />
-        </el-tooltip>
-      </template>
+      <!--
+        操作按钮（流式布局）由 DesignOverlay 叠加层统一处理，不在此处渲染。
+        绝对定位节点由 AbsoluteNodeOverlay 处理。
+      -->
 
       <!--
         绝对定位模式：跳过 FormItem 外壳，直接渲染裸 Widget
@@ -266,7 +252,7 @@ import {
   ElFormItem,
   type FormItemRule,
 } from 'element-plus'
-import { QuestionFilled, Delete, CopyDocument } from '@element-plus/icons-vue'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import type { FieldSchema } from '../types/schema'
 import type { FormModel } from '../types/model'
 import {
@@ -372,20 +358,6 @@ function handleWrapperClick(): void {
   } else if (designerEngine) {
     designerEngine.selectNode(nodeId)
   }
-}
-
-/** 复制节点 */
-function handleDuplicate(): void {
-  const nodeId = props.schema['x-id']
-  if (!nodeId || !designerEngine) return
-  designerEngine.duplicateNode(nodeId)
-}
-
-/** 删除节点 */
-function handleRemove(): void {
-  const nodeId = props.schema['x-id']
-  if (!nodeId || !designerEngine) return
-  designerEngine.removeNode(nodeId)
 }
 
 // ============================================================
@@ -629,67 +601,6 @@ const elFormRules = computed<FormItemRule[]>(() => {
 .lowcode-field-wrapper.design-mode:hover {
   outline: 1px dashed #409eff;
   outline-offset: -1px;
-}
-
-/** 操作按钮容器 */
-.design-actions {
-  display: none;
-  position: absolute;
-  top: -32px;
-  right: 0;
-  align-items: center;
-  gap: 2px;
-  background: #409eff;
-  border-radius: 3px;
-  padding: 3px 6px;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  z-index: 1000;
-}
-
-.lowcode-field-wrapper--selected .design-actions {
-  display: flex;
-}
-
-/** Hover 时的占位元素（用于触发 tooltip） */
-.design-hover-placeholder {
-  position: absolute;
-  top: -20px;
-  right: 0;
-  height: 20px;
-  width: 1px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.design-actions__label {
-  font-size: 11px;
-  color: #fff;
-  margin-right: 4px;
-  line-height: 1;
-}
-
-.design-actions__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 2px;
-  padding: 0;
-  transition: background 0.15s;
-}
-
-.design-actions__btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.design-actions__btn--danger:hover {
-  background: #f56c6c;
 }
 
 .lowcode-field__extra {
