@@ -225,7 +225,9 @@ vue-tsc 零错误，154 测试全通过，Vite 构建成功。
 
 ### 第十六阶段进度（2026-03-28）
 
-commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014`
+commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014` → `232b0aa` → `7aec6f3` → `63bb1f0`
+
+**最新 commit**：`63bb1f0` - 修复 AbsoluteNodeOverlay 层级低于 DesignOverlay 的问题
 
 已完成的核心工作：
 - XLayout 统一渲染器（替代条件渲染分支）
