@@ -46,6 +46,18 @@
 - 修复：添加 `currentNodeId` 跟踪 form 同步状态，emitUpdate 前检查同步性
 - 理由：watch 回调异步执行，可能在用户触发 @change 时 form 还未同步到新节点
 
+### 问题3：AbsoluteNodeOverlay 层级低于 DesignOverlay
+- **问题描述**：`absolute-overlay`的层级不够`design-overlay`高，导致自由定位节点被拖拽到流式布局上方后，鼠标永远无法再拖拽或者操作`absolute-overlay__item`
+- **根因分析**：
+  - `DesignOverlay`：`.design-overlay`（z-index: 100），`.design-overlay__item`（z-index: 101）
+  - `AbsoluteNodeOverlay`：`.absolute-overlay`（无 z-index），`.absolute-overlay__item`（无 z-index），`.resize-handle`（z-index: 1001）
+  - 当绝对定位节点覆盖流式节点时，`.design-overlay__item`（z-index: 101）拦截鼠标事件
+- **修复方案**：
+  - 文件：`designer/AbsoluteNodeOverlay.vue`
+  - 修改：为 `.absolute-overlay` 添加 `z-index: 200`，为 `.absolute-overlay__item` 添加 `z-index: 201`
+  - 结果：确保 AbsoluteNodeOverlay 层级始终高于 DesignOverlay
+- **验证**：154 个单元测试全部通过，TypeScript 零错误，开发服务器正常
+
 ## 编码规范
 
 见 `D:\demo\ai\aiSpace\编码风格总结.md`。关键规范：

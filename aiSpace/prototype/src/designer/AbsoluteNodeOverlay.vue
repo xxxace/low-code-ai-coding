@@ -346,6 +346,7 @@ onUnmounted(() => {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+  z-index: 200; /* 确保高于 DesignOverlay 的 z-index: 100 */
 }
 
 .absolute-overlay__item {
@@ -354,6 +355,7 @@ onUnmounted(() => {
   background: rgba(64, 158, 255, 0.05);
   box-sizing: border-box;
   pointer-events: auto;
+  z-index: 201; /* 确保高于 DesignOverlay__item 的 z-index: 101 */
 }
 
 /* 缩放手柄 */
