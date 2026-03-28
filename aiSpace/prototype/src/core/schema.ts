@@ -181,6 +181,7 @@ export interface ReactionEffect {
    */
   state?: {
     visible?: boolean
+    hidden?: boolean
     disabled?: boolean
     readOnly?: boolean
     required?: boolean

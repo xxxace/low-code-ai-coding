@@ -199,6 +199,7 @@ import {
   createDefaultRegistry,
   COMPONENT_REGISTRY_KEY,
 } from "../core/registry";
+import { DESIGNER_ENGINE_KEY } from "../core/injectionKeys";
 
 // ============================================================
 // Props & Emits
@@ -219,7 +220,7 @@ const emit = defineEmits<{
 // ============================================================
 
 const engine = useDesignerEngine();
-provide("designerEngine", engine);
+provide(DESIGNER_ENGINE_KEY, engine);
 
 const componentRegistry = createDefaultRegistry();
 provide(COMPONENT_REGISTRY_KEY, componentRegistry);

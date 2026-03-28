@@ -165,6 +165,7 @@ import { ElTooltip } from "element-plus";
 import { Delete, CopyDocument } from "@element-plus/icons-vue";
 import type { VoidFieldSchema } from "../types/schema";
 import type { FormModel } from "../core/model";
+import { injectDesignMode, injectSelectedNodeId, injectDesignerEngine } from "../core/injectionKeys";
 import XLayout from "./XLayout.vue";
 
 // ============================================================
@@ -200,22 +201,20 @@ const props = withDefaults(defineProps<Props>(), {
 const voidWrapperRef = ref<HTMLDivElement | null>(null);
 
 // ============================================================
-// 注入设计器引擎
+// 注入设计器引擎（类型安全）
 // ============================================================
 
-const designerEngine: any = inject("designerEngine", null);
+const designerEngine = injectDesignerEngine(null);
 
-/** 设计模式 */
-const designMode = inject<boolean>("designMode", false);
+/** 设计模式（ComputedRef<boolean>，模板中自动解包） */
+const designMode = injectDesignMode(false);
 
-/** 当前选中的节点 ID（由 XLayout 注入） */
-const selectedNodeId = inject<{ value: string | null }>("selectedNodeId", {
-  value: null,
-});
+/** 当前选中的节点 ID（由 XLayout 注入，类型安全） */
+const selectedNodeId = injectSelectedNodeId(null);
 
 /** 节点是否被选中 */
 const isSelected = computed(() => {
-  return designMode && props.schema["x-id"] === selectedNodeId?.value;
+  return designMode && props.schema["x-id"] === selectedNodeId.value;
 });
 
 /** 是否为 absolute 自由定位模式 */
@@ -286,9 +285,9 @@ function syncContainerSize(): void {
   }
 }
 
-// 防抖定时器 和 ResizeObserver 引用（模块级，onBeforeUnmount 统一清理）
-let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-let resizeObserver: ResizeObserver | null = null;
+// 防抖定时器 和 ResizeObserver 引用（实例级，每个 VoidContainer 独立持有）
+const resizeTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const resizeObserver = ref<ResizeObserver | null>(null)
 
 onMounted(async () => {
   if (!designMode || !isAbsoluteMode.value) return;
@@ -297,21 +296,21 @@ onMounted(async () => {
   syncContainerSize();
   // 注册 ResizeObserver，监听 Tabs 切换 / Collapse 展开等动态内容变化
   if (voidWrapperRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      if (resizeTimer) clearTimeout(resizeTimer);
+    resizeObserver.value = new ResizeObserver(() => {
+      if (resizeTimer.value) clearTimeout(resizeTimer.value);
       // 防抖 200ms：确保 el-collapse 展开动画（约 300ms）结束后再读高度
-      resizeTimer = setTimeout(syncContainerSize, 200);
+      resizeTimer.value = setTimeout(syncContainerSize, 200);
     });
-    resizeObserver.observe(voidWrapperRef.value);
+    resizeObserver.value.observe(voidWrapperRef.value);
   }
 });
 
 onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-  if (resizeTimer) {
-    clearTimeout(resizeTimer);
-    resizeTimer = null;
+  resizeObserver.value?.disconnect();
+  resizeObserver.value = null;
+  if (resizeTimer.value) {
+    clearTimeout(resizeTimer.value);
+    resizeTimer.value = null;
   }
 });
 

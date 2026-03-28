@@ -45,6 +45,8 @@ export interface FieldState {
   pattern: PatternState
   /** 加载中（如异步选项加载） */
   loading: boolean
+  /** 是否必填（由联动引擎动态设置） */
+  required?: boolean
   /** 是否被用户修改过 */
   modified: boolean
   /** 校验错误信息列表 */
@@ -276,21 +278,24 @@ export class FormModel {
     this.validating.value = true
     let valid = true
 
-    const fieldsToValidate = paths
-      ? paths
-          .map((p) => this._fields[p])
-          .filter((f): f is FieldState => Boolean(f))
-      : Object.values(this._fields)
+    try {
+      const fieldsToValidate = paths
+        ? paths
+            .map((p) => this._fields[p])
+            .filter((f): f is FieldState => Boolean(f))
+        : Object.values(this._fields)
 
-    await Promise.all(
-      fieldsToValidate.map(async (field) => {
-        const errors = await this._validateField(field)
-        field.errors = errors
-        if (errors.length > 0) valid = false
-      })
-    )
+      await Promise.all(
+        fieldsToValidate.map(async (field) => {
+          const errors = await this._validateField(field)
+          field.errors = errors
+          if (errors.length > 0) valid = false
+        })
+      )
+    } finally {
+      this.validating.value = false
+    }
 
-    this.validating.value = false
     return valid
   }
 

@@ -18,6 +18,6 @@ describe('Vitest 脚手架冒烟测试', () => {
     const { resolveLocalizedString } = await import('../schema')
     expect(resolveLocalizedString('你好')).toBe('你好')
     expect(resolveLocalizedString({ zh: '中文', en: 'English' })).toBe('中文')
-    expect(resolveLocalizedString({ en: 'English' }, 'en')).toBe('English')
+    expect(resolveLocalizedString({ zh: 'English', en: 'English' }, 'en')).toBe('English')
   })
 })

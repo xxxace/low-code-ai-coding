@@ -273,6 +273,7 @@ import {
   useComponentRegistry,
   COMPONENT_REGISTRY_KEY,
 } from '../types/componentRegistry'
+import { injectDesignMode, injectSelectedNodeId, injectDesignerEngine } from '../core/injectionKeys'
 
 // ============================================================
 // Props
@@ -306,11 +307,11 @@ const formRendererCtx = inject<{
   onFieldChange: (path: string, value: any) => void
 }>('formRenderer')
 
-/** 设计模式：强制所有字段可见，忽略联动 display 状态 */
-const designMode = inject<boolean>('designMode', false)
+/** 设计模式：强制所有字段可见，忽略联动 display 状态（ComputedRef<boolean>，模板中自动解包） */
+const designMode = injectDesignMode(false)
 
-/** 设计器引擎（用于触发节点选中） */
-const designerEngine = inject<any>('designerEngine', null)
+/** 设计器引擎（用于触发节点选中，类型安全） */
+const designerEngine = injectDesignerEngine(null)
 
 /** 根元素引用（用于检测实际渲染尺寸） */
 const fieldWrapperRef = ref<HTMLElement | null>(null)
@@ -353,12 +354,12 @@ onMounted(() => {
   })
 })
 
-/** 当前选中的节点 ID（由 XLayout 注入） */
-const selectedNodeId = inject<{ value: string | null }>('selectedNodeId', { value: null })
+/** 当前选中的节点 ID（由 XLayout 注入，类型安全） */
+const selectedNodeId = injectSelectedNodeId(null)
 
 /** 节点是否被选中 */
 const isSelected = computed(() => {
-  return designMode && props.schema['x-id'] === selectedNodeId?.value
+  return designMode && props.schema['x-id'] === selectedNodeId.value
 })
 
 /** 节点点击事件（设计器模式） */

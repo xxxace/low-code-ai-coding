@@ -353,10 +353,10 @@ export function moveNodeToContainer(
     (max, f) => Math.max(max, f['x-order'] ?? 0),
     0
   )
-  sourceNode['x-order'] = maxOrder + 10
+  ;(sourceNode as any)['x-order'] = maxOrder + 10
 
   // 3. 处理 key 冲突：目标容器内已有同名 key 则追加后缀
-  let newKey = sourceKey
+  let newKey: string = sourceKey as string
   if (newKey in targetProps) {
     newKey = `${sourceKey}_${Date.now()}`
   }
@@ -534,7 +534,7 @@ export function moveNodeAcrossContainers(
   delete sourceParentProps[sourceKey]
 
   // --- 第四步：插入目标 parent，处理 key 冲突 ---
-  let newKey = sourceKey
+  let newKey: string = sourceKey as string
   if (newKey in targetParentProps) {
     newKey = `${sourceKey}_${Date.now()}`
   }

@@ -295,11 +295,8 @@ export function useDesignerEngine() {
     position: { x: number; y: number }
   ): void {
     if (!schema.value) return
-
-    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
-    updateNodeFreePositionById(newSchema.schema.properties, nodeId, position)
-    schema.value = newSchema
-    saveSnapshot()
+    // 直接操作 reactive schema，跳过深拷贝（ResizeObserver 回调用）
+    updateNodeFreePositionById(schema.value.schema.properties, nodeId, position)
   }
 
   function updateNodeFreeSize(
@@ -307,41 +304,36 @@ export function useDesignerEngine() {
     size: { width: number; height: number }
   ): void {
     if (!schema.value) return
-
-    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
-    updateNodeFreeSizeById(newSchema.schema.properties, nodeId, size)
-    schema.value = newSchema
-    saveSnapshot()
+    // 直接操作 reactive schema，跳过深拷贝（ResizeObserver 回调用）
+    updateNodeFreeSizeById(schema.value.schema.properties, nodeId, size)
   }
 
   /**
    * 更新 absolute 定位节点的 x/y 位置（XLayout 架构）
    * 注意：不记录快照，由 AbsoluteNodeOverlay 组件控制何时保存
+   * 优化：直接原地修改 schema，跳过深拷贝（拖拽高频调用）
    */
   function updateNodePosition(
     nodeId: string,
     position: { x: number; y: number }
   ): void {
     if (!schema.value) return
-
-    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
-    updateNodePositionById(newSchema.schema.properties, nodeId, position)
-    schema.value = newSchema
+    // 直接操作 reactive schema，Vue 深层代理自动追踪变更
+    updateNodePositionById(schema.value.schema.properties, nodeId, position)
   }
 
   /**
    * 更新 absolute 定位节点的宽高（XLayout 架构）
    * 注意：不记录快照，由 AbsoluteNodeOverlay 组件控制何时保存
+   * 优化：直接原地修改 schema，跳过深拷贝（拖拽高频调用）
    */
   function updateNodeSize(
     nodeId: string,
     size: { width: number; height: number }
   ): void {
     if (!schema.value) return
-
-    const newSchema = JSON.parse(JSON.stringify(schema.value)) as PageSchema
-    updateNodeSizeById(newSchema.schema.properties, nodeId, size)
-    schema.value = newSchema
+    // 直接操作 reactive schema，Vue 深层代理自动追踪变更
+    updateNodeSizeById(schema.value.schema.properties, nodeId, size)
   }
 
   /**

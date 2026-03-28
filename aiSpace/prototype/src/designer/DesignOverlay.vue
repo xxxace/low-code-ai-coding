@@ -17,8 +17,6 @@
     ref="overlayRef"
     class="design-overlay"
     @mouseleave="handleMouseLeave"
-    @mousemove="handleMouseMove"
-    @mouseup="handleMouseUp"
   >
     <!-- 每个字段节点的叠加框 -->
     <template v-for="item in overlayItems" :key="item.nodeId">
@@ -37,33 +35,12 @@
         :draggable="!isFreeLayout"
         @mouseenter.stop="handleItemHover(item.nodeId)"
         @click.stop="handleItemClick(item.nodeId)"
-        @mousedown.stop="handleItemMouseDown(item.nodeId, $event)"
         @dragstart.stop="handleDragStart(item.nodeId, $event)"
         @dragend.stop="handleDragEnd"
         @dragover.prevent="handleDragOver(item.nodeId, $event)"
         @dragleave.stop="handleDragLeave(item.nodeId, $event)"
         @drop.stop="handleDrop(item.nodeId)"
       >
-        <!-- 自由布局：8个缩放手柄（仅选中时显示） -->
-        <template v-if="isFreeLayout && item.nodeId === selectedNodeId">
-          <!-- 上中 -->
-          <div class="resize-handle resize-handle--n" @mousedown.stop="handleResizeStart(item.nodeId, 'n', $event)"></div>
-          <!-- 下中 -->
-          <div class="resize-handle resize-handle--s" @mousedown.stop="handleResizeStart(item.nodeId, 's', $event)"></div>
-          <!-- 左中 -->
-          <div class="resize-handle resize-handle--w" @mousedown.stop="handleResizeStart(item.nodeId, 'w', $event)"></div>
-          <!-- 右中 -->
-          <div class="resize-handle resize-handle--e" @mousedown.stop="handleResizeStart(item.nodeId, 'e', $event)"></div>
-          <!-- 左上 -->
-          <div class="resize-handle resize-handle--nw" @mousedown.stop="handleResizeStart(item.nodeId, 'nw', $event)"></div>
-          <!-- 右上 -->
-          <div class="resize-handle resize-handle--ne" @mousedown.stop="handleResizeStart(item.nodeId, 'ne', $event)"></div>
-          <!-- 左下 -->
-          <div class="resize-handle resize-handle--sw" @mousedown.stop="handleResizeStart(item.nodeId, 'sw', $event)"></div>
-          <!-- 右下 -->
-          <div class="resize-handle resize-handle--se" @mousedown.stop="handleResizeStart(item.nodeId, 'se', $event)"></div>
-        </template>
-
         <!-- 操作按钮（选中时显示）—— 四向边界感知，始终显示在画布内 -->
         <div
           v-if="item.nodeId === selectedNodeId"
@@ -177,6 +154,17 @@ const emit = defineEmits<{
 // 操作栏四向边界感知
 // ============================================================
 
+/** 设计常量 */
+const DESIGN_CONSTANTS = {
+  /** 操作栏估算宽度（字段名 + 按钮组） */
+  ACTIONS_W: 160,
+  /** 操作栏估算高度 */
+  ACTIONS_H: 30,
+  /** 拖入容器判定阈值（鼠标落入容器中部 30% 区域时判定为移入） */
+  DROP_INTO_THRESHOLD_LOW: 0.35,
+  DROP_INTO_THRESHOLD_HIGH: 0.65,
+} as const
+
 /**
  * 计算操作栏的 position style，使其始终在画布可见区域内
  *
@@ -187,44 +175,30 @@ const emit = defineEmits<{
  *   若字段太靠左导致操作栏溢出左侧，则用 left: 0 保证不超出画布左边
  */
 function getActionsStyle(item: OverlayItem): CSSProperties {
-  // 操作栏估算宽度（字段名 + 4个按钮）
-  const ACTIONS_W = 160
-  const ACTIONS_H = 30
-
   const canvasW = props.canvasEl?.offsetWidth ?? 0
-  const canvasH = props.canvasEl?.offsetHeight ?? 0
 
   const itemLeft = parseFloat(item.style.left as string) || 0
   const itemTop = parseFloat(item.style.top as string) || 0
   const itemW = parseFloat(item.style.width as string) || 0
 
   // ---- 垂直方向 ----
-  // 字段顶部到画布顶部不足 ACTIONS_H，则放到下方
-  const showBelow = itemTop < ACTIONS_H
+  const showBelow = itemTop < DESIGN_CONSTANTS.ACTIONS_H
   const verticalStyle: CSSProperties = showBelow
     ? { top: '100%', bottom: 'auto', marginTop: '2px', marginBottom: '0' }
     : { bottom: '100%', top: 'auto', marginBottom: '2px', marginTop: '0' }
 
   // ---- 水平方向 ----
-  // 字段右边缘在画布内，优先右对齐（right: 0 相对字段右侧）
-  // 但如果字段自身宽度不够 ACTIONS_W（字段太窄或太靠左），
-  // 就检查字段左边缘 + ACTIONS_W 是否超出画布右边缘
   const rightEdge = itemLeft + itemW
   let horizontalStyle: CSSProperties
 
   if (itemLeft < 0) {
-    // 字段左边超出画布左侧（极端情况），贴左边
     horizontalStyle = { left: '0', right: 'auto' }
-  } else if (rightEdge < ACTIONS_W) {
-    // 字段太靠左，如果右对齐操作栏会溢出左侧，改左对齐
+  } else if (rightEdge < DESIGN_CONSTANTS.ACTIONS_W) {
     horizontalStyle = { left: '0', right: 'auto' }
   } else if (canvasW > 0 && rightEdge > canvasW) {
-    // 字段超出画布右侧，贴右边
     horizontalStyle = { right: '0', left: 'auto' }
   } else {
-    // 正常情况：操作栏右对齐字段右边缘
-    // 检查左溢出：字段右边缘 - ACTIONS_W < 0，说明会溢出左侧
-    if (rightEdge - ACTIONS_W < 0) {
+    if (rightEdge - DESIGN_CONSTANTS.ACTIONS_W < 0) {
       horizontalStyle = { left: '0', right: 'auto' }
     } else {
       horizontalStyle = { right: '0', left: 'auto' }
@@ -299,8 +273,19 @@ const flatNodes = computed<FlatNode[]>(() => {
 })
 
 // ============================================================
-// 核心：DOM 坐标计算
+// 核心：DOM 坐标计算 + 防抖
 // ============================================================
+
+let refreshTimerId: ReturnType<typeof setTimeout> | null = null
+
+/** 防抖刷新：MutationObserver / ResizeObserver 高频回调时，合并到单帧 */
+function debouncedRefreshOverlay(): void {
+  if (refreshTimerId) clearTimeout(refreshTimerId)
+  refreshTimerId = setTimeout(() => {
+    refreshTimerId = null
+    refreshOverlay()
+  }, 16) // ~60fps，与 RAF 对齐
+}
 
 function refreshOverlay(): void {
   if (!props.canvasEl) return
@@ -357,34 +342,41 @@ function refreshOverlay(): void {
 // 监听 DOM 变化（MutationObserver）
 // ============================================================
 
-let mutationObserver: MutationObserver | null = null
-let resizeObserver: ResizeObserver | null = null
+// Observer 引用（ref 管理，确保生命周期安全）
+const mutationObserverRef = ref<MutationObserver | null>(null)
+const resizeObserverRef = ref<ResizeObserver | null>(null)
+// 定时器引用（用于清理 setTimeout）
+const mountedTimerRef = ref<ReturnType<typeof setTimeout> | null>(null)
+const schemaWatchTimerRef = ref<ReturnType<typeof setTimeout> | null>(null)
 
 function setupObservers(): void {
   if (!props.canvasEl) return
 
-  // 监听 DOM 结构变化（新增/删除节点）
-  mutationObserver = new MutationObserver(() => {
-    nextTick(refreshOverlay)
+  // 先断开旧 Observer（防止 canvasEl watcher 重复调用时泄漏）
+  teardownObservers()
+
+  // 监听 DOM 结构变化（新增/删除节点）—— 走防抖，避免连续 DOM 变更触发多次刷新
+  mutationObserverRef.value = new MutationObserver(() => {
+    debouncedRefreshOverlay()
   })
-  mutationObserver.observe(props.canvasEl, {
+  mutationObserverRef.value.observe(props.canvasEl, {
     childList: true,
     subtree: true,
     attributes: false,
   })
 
   // 监听容器大小变化
-  resizeObserver = new ResizeObserver(() => {
-    refreshOverlay()
+  resizeObserverRef.value = new ResizeObserver(() => {
+    debouncedRefreshOverlay()
   })
-  resizeObserver.observe(props.canvasEl)
+  resizeObserverRef.value.observe(props.canvasEl)
 }
 
 function teardownObservers(): void {
-  mutationObserver?.disconnect()
-  mutationObserver = null
-  resizeObserver?.disconnect()
-  resizeObserver = null
+  mutationObserverRef.value?.disconnect()
+  mutationObserverRef.value = null
+  resizeObserverRef.value?.disconnect()
+  resizeObserverRef.value = null
 }
 
 // ============================================================
@@ -394,27 +386,41 @@ function teardownObservers(): void {
 onMounted(async () => {
   await nextTick()
   // 额外延迟一个宏任务，确保 canvas 内 FormRenderer 的 DOM 完全渲染完成
-  setTimeout(() => {
+  mountedTimerRef.value = setTimeout(() => {
+    mountedTimerRef.value = null
     setupObservers()
     refreshOverlay()
   }, 50)
 })
 
-// 监听 schema 变化，刷新 overlay（只保留一个 watch）
+// 监听 schema 变化，刷新 overlay（用 __meta__.updatedAt 快速判断）
 watch(
-  () => props.schema,
+  () => [props.schema.__meta__?.updatedAt, props.schema.id] as const,
   async () => {
     await nextTick()
     // 额外等待一个宏任务，确保 FormRenderer 内的 el-form 渲染完成
-    setTimeout(() => {
+    if (schemaWatchTimerRef.value) clearTimeout(schemaWatchTimerRef.value)
+    schemaWatchTimerRef.value = setTimeout(() => {
+      schemaWatchTimerRef.value = null
       refreshOverlay()
     }, 20)
   },
-  { deep: true }
 )
 
 onUnmounted(() => {
   teardownObservers()
+  if (mountedTimerRef.value) {
+    clearTimeout(mountedTimerRef.value)
+    mountedTimerRef.value = null
+  }
+  if (schemaWatchTimerRef.value) {
+    clearTimeout(schemaWatchTimerRef.value)
+    schemaWatchTimerRef.value = null
+  }
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId)
+    refreshTimerId = null
+  }
 })
 
 // canvasEl 变化时重新设置监听
@@ -450,35 +456,6 @@ function handleItemClick(nodeId: string): void {
 const isFreeLayout = computed(() => {
   return props.schema?.layoutMode === 'free'
 })
-
-// ============================================================
-// 自由布局：拖拽和缩放（基础框架，实际逻辑在 FreeCanvas 中实现）
-// ============================================================
-
-// 拖拽状态
-const draggingNodeId = ref<string | null>(null)
-const resizingNodeId = ref<string | null>(null)
-const resizingDirection = ref<string | null>(null)
-
-function handleItemMouseDown(nodeId: string, e: MouseEvent): void {
-  // 自由布局模式下，拖拽由 FreeCanvas 组件处理，阻止默认行为（避免文字选中）
-  // 流式布局模式下，不能 preventDefault，否则会阻断 HTML5 dragstart 事件链
-  if (isFreeLayout.value) {
-    e.preventDefault()
-  }
-}
-
-function handleMouseMove(e: MouseEvent): void {
-  // 自由布局模式下，拖拽由 FreeCanvas 组件处理
-  // 此组件仅用于流式布局模式
-}
-
-function handleMouseUp(e: MouseEvent): void {
-  // 清理拖拽/缩放状态
-  draggingNodeId.value = null
-  resizingNodeId.value = null
-  resizingDirection.value = null
-}
 
 // ============================================================
 // 流式布局：拖拽排序（HTML5 DnD）
@@ -536,7 +513,7 @@ function handleDragOver(nodeId: string, e: DragEvent): void {
   const isTargetContainer = targetNode?.isContainer ?? false
 
   let intent: 'before' | 'after' | 'into'
-  if (isTargetContainer && ratio >= 0.35 && ratio <= 0.65) {
+  if (isTargetContainer && ratio >= DESIGN_CONSTANTS.DROP_INTO_THRESHOLD_LOW && ratio <= DESIGN_CONSTANTS.DROP_INTO_THRESHOLD_HIGH) {
     intent = 'into'
   } else {
     intent = ratio < 0.5 ? 'before' : 'after'
@@ -608,13 +585,6 @@ function handleDrop(toNodeId: string): void {
   dropIndicator.value = null
 }
 
-function handleResizeStart(nodeId: string, direction: string, e: MouseEvent): void {
-  // 自由布局模式下，缩放由 FreeCanvas 组件处理
-  // 此组件仅用于流式布局模式
-  e.preventDefault()
-  e.stopPropagation()
-}
-
 // ============================================================
 // 对外暴露
 // ============================================================
@@ -674,11 +644,17 @@ defineExpose({
   background: rgba(103, 194, 58, 0.10) !important;
 }
 
-/* 正在被拖拽的节点：半透明 + 虚线边框 */
+/* 正在被拖拽的节点：半透明 + 虚线边框 + 禁用 transition */
 .design-overlay__item--dragging {
   opacity: 0.4;
   border: 2px dashed #909399 !important;
   cursor: grabbing !important;
+  transition: none !important;
+}
+
+/* 任意节点正在被拖拽时，全局禁用所有 overlay item 的 transition */
+.design-overlay:has(.design-overlay__item--dragging) .design-overlay__item {
+  transition: none !important;
 }
 
 /* 操作按钮区 —— 位置完全由 JS getActionsStyle() 动态控制 */

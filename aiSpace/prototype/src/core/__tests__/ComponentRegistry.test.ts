@@ -288,8 +288,8 @@ describe('ComponentRegistry', () => {
       const meta = registry.getWidgetMeta('Tabs')!
       expect(meta.isContainer).toBe(true)
       expect(meta.defaultSchema.type).toBe('void')
-      expect(meta.defaultSchema.properties).toBeDefined()
-      expect(Object.keys(meta.defaultSchema.properties!)).toContain('tabPane1')
+      expect((meta.defaultSchema as any).properties).toBeDefined()
+      expect(Object.keys((meta.defaultSchema as any).properties!)).toContain('tabPane1')
     })
 
     it('多个容器组件按 category 分组', () => {

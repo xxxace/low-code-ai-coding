@@ -6,8 +6,9 @@
 
 ## 工作空间信息
 
-- 工作空间：`D:\demo\ai\aiSpace\workbuddy`
-- 共享 AI 工作目录：`D:\demo\ai\aiSpace`（由本 agent 与 deskclaw agent 共同使用）
+- 工作空间：`D:\demo\ai\aiSpace\workbuddy` → 已迁移至 `d:\ai\low-code-ai-coding\aiSpace\workbuddy`
+- 共享 AI 工作目录：`d:\ai\low-code-ai-coding\aiSpace`（由本 agent 与 deskclaw agent 共同使用）
+- 原型代码路径：`d:\ai\low-code-ai-coding\aiSpace\prototype\src\`（注意：旧路径 `D:\demo\ai\aiSpace` 已不存在）
 
 ## 项目背景
 
@@ -43,7 +44,7 @@
 - 异步：async/await + try-catch
 - 禁止使用 var，禁止直接操作 DOM
 
-## 当前进度（2026-03-27，第十六阶段进行中）
+## 当前进度（2026-03-28，第十六阶段进行中）
 
 **已完成全部功能（15 个阶段）**，详见 `FEATURE_CHECKLIST.md`。
 
@@ -56,7 +57,7 @@
 - 预览功能（el-dialog 弹窗）
 - 导出 Schema（handleExport JSON 下载）
 - 导入 Schema（validateImportedSchema 校验 + ElMessageBox 覆盖确认 + engine.loadSchema）
-- 单元测试 154 个全部通过（2026-03-27 晚上）
+- 单元测试 154 个全部通过
 - TypeScript 零错误，Vite 构建成功
 
 ## 第十六阶段：XLayout 架构演进（进行中）
@@ -75,10 +76,13 @@
 
 | 步骤 | 内容 | 状态 |
 |---|---|---|
-| Step 0 | 移除 wrapper div，修复 containing block 语义 | ✅ 已完成（8b05669） |
-| Step 1 | 创建 XLayout.vue + VoidContainer 改造 | ✅ 已完成（e3ab15d） |
-| Step 2 | FormRenderer 使用 XLayout，移除 FreeCanvas/DesignOverlay | ✅ 已完成（e3ab15d） |
-| Step 3 | AbsoluteNodeOverlay 统一交互层 | ✅ 已完成 |
+| Step 0 | 移除 wrapper div，修复 containing block 语义 | ✅ `8b05669` |
+| Step 1 | 创建 XLayout.vue + VoidContainer 改造 | ✅ `e3ab15d` |
+| Step 2 | FormRenderer 使用 XLayout，移除 FreeCanvas/DesignOverlay | ✅ `e3ab15d` |
+| Step 3 | AbsoluteNodeOverlay 统一交互层 | ✅ `2c96f0c` |
+| 3.1 | Flow/Free 交互分离架构重构 + 属性面板定位类型选择器 | ✅ `78eec2a` |
+| 3.2 | 双层交互系统集成 + 坐标偏移修复 + VoidContainer 高度自适应 | ✅ `1a2aa9d` |
+| 3.3 | absolute 容器 overlay 叠加问题修复 | ✅ `9480014` |
 | Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 待实现 |
 | Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ⏳ 待实现 |
 
@@ -162,33 +166,52 @@
 - `core/schema.ts`（新增 x-position-type 和 x-position 类型）
 
 ### 待实现功能（按优先级）
-1. Step 3: AbsoluteNodeOverlay 统一交互层（高优）
-2. Step 4: PositionTypeSetter 属性面板（高优）
-3. Step 5: 旧 Schema 迁移（layoutMode → x-position-type）
-4. x-relation 关系字段 UI（中）
-5. 其他低优先级项见 FEATURE_CHECKLIST.md
+1. Step 4: 批量切换工具栏 + PositionTypeSetter 属性面板（高优）
+2. Step 5: 旧 Schema 迁移（layoutMode → x-position-type）（高优）
+3. x-relation 关系字段 UI（中）
+4. 其他低优先级项见 FEATURE_CHECKLIST.md
 
 ### 已否决/移除项
 - GroupRenderer.vue：已否决，由 VoidContainer 替代
 - StdForm 适配层：已从规划中移除
 - Monorepo 4包→3包（core/renderer/designer）
 
+### 代码质检 + 类型修复（2026-03-28 晚）
+
+4 个 Batch 累计修复 18 个代码质量问题（P0×4 + P1×4 + P2×5 + P3×5），13 个 vue-tsc 类型错误。
+
+**质检关键修复**：
+- P0：拖拽 rAF 节流、VoidContainer Observer 实例隔离、拖拽期间禁用 transition
+- P1：validate 异常安全、FormRenderer watch 优化（updatedAt 时间戳替代 deep watch）、InjectionKey 统一（DESIGN_MODE_KEY / SELECTED_NODE_ID_KEY / DESIGNER_ENGINE_KEY）、schema 原地修改替代 JSON 深拷贝
+- P2：Observer 生命周期修复（ref 管理 + teardown 再重建）、refreshOverlay 16ms 防抖
+- P3：4 处 `any` 消除、dead code 清理、DESIGN_CONSTANTS 魔法数字提取
+
+**类型修复**：
+- `FieldState` 添加 `required?: boolean`，`ReactionEffect.state` 添加 `hidden?: boolean`（运行时已支持但类型遗漏）
+- `defineComponent(() => null)` → `defineComponent(() => () => null)`
+- CSS 字面量类型 `as const`、联合类型 `as any` 绕过
+
+**新增文件**：`core/injectionKeys.ts`（DESIGN_MODE_KEY / SELECTED_NODE_ID_KEY / DESIGNER_ENGINE_KEY）
+
+vue-tsc 零错误，154 测试全通过，Vite 构建成功。
+
+### 未提交变更（2026-03-28）
+
+上述质检和类型修复尚未 git commit（14 个 modified + 2 个 untracked 文件）。
+
 ### 第十六阶段进度（2026-03-28）
 
-**修复 Absolute 节点坐标偏移问题**：
-- 根因：AbsoluteNodeOverlay 的 inset:0 贴合 .lowcode-designer__canvas（有 padding:16px），FieldRenderer 的 absolute 元素以 XLayout（position:relative）为 containing block，两者坐标原点不一致
-- 修复：1) AbsoluteNodeOverlay 移入 canvas-container 内；2) 去掉 canvas-renderer 的 position:relative；3) 去掉 XLayout 的 position:relative；4) FieldRenderer absolute 模式加 overflow:hidden + padding:0
-- 测试：154 个单元测试全部通过，TypeScript 零错误，Vite 构建成功
+commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014`
 
-**实现流式节点拖入 absolute 容器（2026-03-28 下午）**：
-- 问题：流式节点（relative）拖拽到绝对定位容器时无法触发 hover 高亮和 drop
-- 根因（第一层）：FlatNode 接口缺少 positionType 字段
-- 根因（第二层，2026-03-28 傍晚发现）：DesignOverlay 和 AbsoluteNodeOverlay 没有设置 `z-index`，导致 Element Plus 组件（如 el-card）创建的层叠上下文覆盖了 overlay-item，dragover 事件被容器截获
-- 修复：
-  1. FlatNode 接口添加 positionType: 'relative' | 'absolute' 字段
-  2. refreshOverlay 过滤 absolute 非容器节点，保留 absolute 容器作为拖拽目标
-  3. **DesignOverlay 添加 z-index: 100（容器）和 z-index: 101（overlay-item）**，确保覆盖 Element Plus 组件
-- 验证：154 个单元测试全部通过，TypeScript 零错误，Vite 构建成功
+已完成的核心工作：
+- XLayout 统一渲染器（替代条件渲染分支）
+- AbsoluteNodeOverlay：拖拽移动 + 8 向缩放
+- Flow/Free 双层交互分离架构：DesignOverlay（流式）+ AbsoluteNodeOverlay（绝对）
+- 坐标偏移修复：overlay 移入 canvas-container，对齐 containing block
+- VoidContainer 高度自适应：ResizeObserver 监听动态变化
+- absolute 容器 overlay 叠加修复：选中态由 AbsoluteNodeOverlay 处理，hover/drop 由 DesignOverlay 处理
+- 属性面板新增：定位类型选择器 + Free 模式位置/尺寸输入框
+- 代码质检 4 Batch + vue-tsc 13 错误修复（未提交）
 
 开发服务器：`http://localhost:5173`（在 prototype/ 目录运行 npx vite）
 运行测试：`cd prototype && npx vitest run`

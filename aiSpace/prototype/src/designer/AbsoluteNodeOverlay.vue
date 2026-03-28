@@ -15,6 +15,7 @@
     <template v-if="selectedNodeSchema">
       <div
         class="absolute-overlay__item"
+        :class="{ 'absolute-overlay__item--dragging': isDragging || isResizing }"
         :style="itemStyle"
         @mousedown.stop="handleItemMouseDown"
         @click.stop="handleItemClick(selectedNodeSchema!['x-id']!)"
@@ -136,6 +137,8 @@ const overlayRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const isResizing = ref(false)
 const resizeDirection = ref<string | null>(null)
+/** RAF 节流标记，确保每帧最多处理一次 mousemove */
+let rafPending = false
 
 // 拖拽/缩放的起始鼠标位置
 const startMouseX = ref(0)
@@ -181,12 +184,12 @@ const itemStyle = computed(() => {
   }
 
   return {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: `${pos.x ?? 0}px`,
     top: `${pos.y ?? 0}px`,
     width: `${pos.width ?? 200}px`,
     height: `${pos.height ?? 40}px`,
-    pointerEvents: 'auto',
+    pointerEvents: 'auto' as const,
     cursor: isResizing.value ? getResizeCursor() : 'move',
     zIndex: pos.zIndex ?? 1,
   }
@@ -253,6 +256,17 @@ function handleResizeStart(direction: string, e: MouseEvent): void {
 function handleMouseMove(e: MouseEvent): void {
   if (!isDragging.value && !isResizing.value) return
 
+  // RAF 节流：每帧最多处理一次，避免高频 mousemove 导致卡顿
+  if (rafPending) return
+  rafPending = true
+  requestAnimationFrame(() => {
+    rafPending = false
+    processMove(e)
+  })
+}
+
+/** 实际处理拖拽/缩放逻辑（由 RAF 调度，每帧最多执行一次） */
+function processMove(e: MouseEvent): void {
   const deltaX = e.clientX - startMouseX.value
   const deltaY = e.clientY - startMouseY.value
 
@@ -312,6 +326,7 @@ function handleMouseUp(): void {
   isDragging.value = false
   isResizing.value = false
   resizeDirection.value = null
+  rafPending = false
 
   emit('save-snapshot')
 
@@ -356,6 +371,11 @@ onUnmounted(() => {
 .resize-handle:hover {
   background: #66b1ff;
   transform: scale(1.2);
+}
+
+/* 拖拽/缩放期间禁用所有 transition，避免重绘卡顿 */
+.absolute-overlay__item--dragging .resize-handle {
+  transition: none !important;
 }
 
 .resize-handle--n {
@@ -444,6 +464,11 @@ onUnmounted(() => {
   border-radius: 2px;
   padding: 0;
   transition: background 0.15s;
+}
+
+/* 拖拽期间禁用操作按钮 transition */
+.absolute-overlay__item--dragging .absolute-overlay__action-btn {
+  transition: none !important;
 }
 
 .absolute-overlay__action-btn:hover {

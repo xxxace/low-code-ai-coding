@@ -38,6 +38,7 @@ import type { PageSchema } from '../types/schema'
 import { createFormModel, type FormModel } from '../types/model'
 import { createReactionsEngine, type ReactionsEngine } from '../types/reactions'
 import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
+import { DESIGN_MODE_KEY } from '../core/injectionKeys'
 import XLayout from './XLayout.vue'
 
 // ============================================================
@@ -198,7 +199,7 @@ provide('formRenderer', {
   },
 })
 // 设计模式标识，供 FieldRenderer 等子组件注入使用
-provide('designMode', props.designMode)
+provide(DESIGN_MODE_KEY, computed(() => props.designMode))
 
 // 注入 ComponentRegistry（从父组件获取或创建默认的）
 const componentRegistry = useComponentRegistry()
@@ -211,16 +212,23 @@ provide(COMPONENT_REGISTRY_KEY, componentRegistry)
 // 初始化表单
 initForm()
 
-// 监听 schema 变化，重新初始化表单（使用 deep: true 确保 properties 变化时也触发）
+// 监听 schema 变化，重新初始化表单
+// 优化：去掉 deep: true，用 __meta__.updatedAt 快速判断是否有结构性变化
 watch(
   () => props.schema,
   (newSchema, oldSchema) => {
-    // 只在 schema 结构真正变化时重新初始化（避免频繁重建）
-    if (newSchema && (!oldSchema || newSchema.id !== oldSchema.id || JSON.stringify(newSchema.schema.properties) !== JSON.stringify(oldSchema.schema.properties))) {
+    if (!newSchema) return
+    // 快速路径：id 变化（如 loadSchema 切换）直接重建
+    if (!oldSchema || newSchema.id !== oldSchema.id) {
+      initForm()
+      return
+    }
+    // updated 时间戳变化 → 可能有结构性改动，做全量对比
+    if (newSchema.__meta__?.updatedAt !== oldSchema.__meta__?.updatedAt) {
       initForm()
     }
   },
-  { deep: true, immediate: false }
+  { immediate: false }
 )
 
 onMounted(() => {

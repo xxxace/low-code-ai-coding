@@ -494,7 +494,7 @@ export function createDefaultRegistry(): ComponentRegistry {
   // ---- 容器组件 ----
   // 注意：void 容器在 FlowLayout 中被拦截，交给 VoidContainer.vue 渲染，
   // 不会走 registry.getWidget() 路径，因此 component 参数传空占位即可。
-  const voidPlaceholder = defineComponent(() => null) as unknown as Component
+  const voidPlaceholder = defineComponent(() => () => null) as unknown as Component
 
   registry
     .registerWidget('Card', voidPlaceholder, {

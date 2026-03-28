@@ -56,6 +56,7 @@
 import { computed, inject, provide, type CSSProperties } from 'vue'
 import type { FieldSchema } from '../core/schema'
 import type { FormModel } from '../core/model'
+import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY, injectDesignerEngine } from '../core/injectionKeys'
 import FieldRenderer from './FieldRenderer.vue'
 import VoidContainer from './VoidContainer.vue'
 
@@ -84,16 +85,16 @@ const props = withDefaults(defineProps<Props>(), {
 // 注入设计器引擎
 // ============================================================
 
-const designerEngine: any = inject('designerEngine', null)
+const designerEngine = injectDesignerEngine(null)
 
 // ============================================================
 // 向子组件注入选中节点 ID（用于 Flow 节点高亮）
 // ============================================================
 
-provide('selectedNodeId', computed(() => designerEngine?.selectedNodeId?.value ?? null))
+provide(SELECTED_NODE_ID_KEY, computed(() => designerEngine?.selectedNodeId.value ?? null))
 
 /** 设计模式注入（让子组件知道是否在设计器中） */
-provide('designMode', computed(() => designerEngine?.designMode ?? false))
+provide(DESIGN_MODE_KEY, computed(() => true))
 
 // ============================================================
 // 计算属性
