@@ -92,6 +92,9 @@ const designerEngine: any = inject('designerEngine', null)
 
 provide('selectedNodeId', computed(() => designerEngine?.selectedNodeId?.value ?? null))
 
+/** 设计模式注入（让子组件知道是否在设计器中） */
+provide('designMode', computed(() => designerEngine?.designMode ?? false))
+
 // ============================================================
 // 计算属性
 // ============================================================
@@ -108,7 +111,6 @@ const sortedProperties = computed(() => {
 })
 
 const containerStyle = computed(() => ({
-  position: 'relative' as const, // 建立定位上下文
   width: '100%',
   minHeight: '100%',
 }))
@@ -133,7 +135,7 @@ function isAbsolute(field: FieldSchema): boolean {
  *
  * 核心规则：
  * - x-position-type === 'absolute' → position: absolute + x/y/width/height
- * - 否则 → 空对象（由 flex 布局自然排列，不强制 position: relative）
+ * - 否则 → 返回空对象，依赖 CSS 默认值 position: relative（建立定位上下文）
  *
  * 注意：不包 wrapper，样式直接传给 VoidContainer / FieldRenderer 根元素
  */

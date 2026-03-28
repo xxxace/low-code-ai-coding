@@ -36,129 +36,224 @@
     <!-- display = hidden：占位但不显示（设计模式下改为虚显，有占位但半透明） -->
     <div
       v-show="designMode || fieldState?.display !== 'hidden'"
+      ref="fieldWrapperRef"
       class="lowcode-field-wrapper"
       :style="nodeStyle"
       :class="[
         fieldWrapperClass,
+        designMode ? 'design-mode' : '',
+        isAbsoluteMode ? 'lowcode-field-wrapper--absolute' : '',
         designMode && fieldState?.display === 'hidden' ? 'lowcode-field-wrapper--design-hidden' : '',
         designMode && isSelected ? 'lowcode-field-wrapper--selected' : ''
       ]"
       :data-field-path="path"
       :data-field-id="schema['x-id']"
-      @click="handleWrapperClick"
-    >
-      <!-- ① FormItem 装饰器 -->
-      <el-form-item
-        v-if="decorator === 'FormItem'"
-        :label="fieldLabel"
-        :prop="path"
-        :required="isRequired"
-        :rules="elFormRules"
-        :label-width="decoratorProps.labelWidth ? `${decoratorProps.labelWidth}px` : undefined"
-        :class="formItemClass"
-      >
-        <!-- 自定义 Label（带 tooltip） -->
-        <template v-if="decoratorProps.tooltip" #label>
-          <span>{{ fieldLabel }}</span>
-          <el-tooltip :content="decoratorProps.tooltip" placement="top">
-            <el-icon class="ml-1 cursor-help" style="color:#c0c4cc"><QuestionFilled /></el-icon>
-          </el-tooltip>
-        </template>
+      @click="handleWrapperClick">
+      <!-- 操作按钮（选中时显示，仅流式布局；绝对定位节点由 AbsoluteNodeOverlay 处理） -->
+      <template v-if="!isAbsoluteMode">
+        <el-tooltip v-if="designMode && isSelected" content="复制节点" placement="top">
+          <div class="design-actions">
+            <span class="design-actions__label">{{ schema.title ?? schema['x-component'] }}</span>
+            <button class="design-actions__btn" title="复制" @click.stop="handleDuplicate">
+              <el-icon><CopyDocument /></el-icon>
+            </button>
+            <button class="design-actions__btn design-actions__btn--danger" title="删除" @click.stop="handleRemove">
+              <el-icon><Delete /></el-icon>
+            </button>
+          </div>
+        </el-tooltip>
+        <!-- Hover 时显示物料名称（未选中时） -->
+        <el-tooltip v-else-if="designMode" :content="schema.title ?? schema['x-component']" placement="top">
+          <div class="design-hover-placeholder" />
+        </el-tooltip>
+      </template>
 
-        <!-- readPretty 模式：只显示文本 -->
-        <template v-if="isReadPretty">
-          <span class="lowcode-field__read-pretty">{{ prettyValue }}</span>
-        </template>
-
-        <!-- 正常渲染 Widget -->
-        <template v-else>
-          <!-- Select 系列：需要注入 options -->
-          <el-select
-            v-if="schema['x-component'] === 'Select'"
-            v-model="fieldValue"
-            :disabled="isDisabled"
-            :placeholder="placeholder"
-            :loading="fieldState?.loading"
-            v-bind="mergedComponentProps"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="opt in fieldState?.dataSource ?? []"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
-
-          <!-- CheckboxGroup -->
-          <el-checkbox-group
-            v-else-if="schema['x-component'] === 'CheckboxGroup'"
-            v-model="fieldValue"
-            :disabled="isDisabled"
-            v-bind="mergedComponentProps"
-          >
-            <el-checkbox
-              v-for="opt in fieldState?.dataSource ?? []"
-              :key="opt.value"
-              :label="opt.value"
-            >{{ opt.label }}</el-checkbox>
-          </el-checkbox-group>
-
-          <!-- RadioGroup -->
-          <el-radio-group
-            v-else-if="schema['x-component'] === 'RadioGroup'"
-            v-model="fieldValue"
-            :disabled="isDisabled"
-            v-bind="mergedComponentProps"
-          >
-            <el-radio
-              v-for="opt in fieldState?.dataSource ?? []"
-              :key="opt.value"
-              :label="opt.value"
-            >{{ opt.label }}</el-radio>
-          </el-radio-group>
-
-          <!-- 通用 Widget（通过 ComponentRegistry 解析） -->
-          <component
-            v-else-if="widgetComponent"
-            :is="widgetComponent"
-            v-model="fieldValue"
-            :disabled="isDisabled"
-            :readonly="isReadOnly"
-            :placeholder="placeholder"
-            v-bind="mergedComponentProps"
-            style="width: 100%"
-          />
-
-          <!-- 未注册的 Widget 降级处理 -->
-          <span v-else class="lowcode-field__unregistered">
-            [未注册组件: {{ schema['x-component'] ?? '(无)' }}]
-          </span>
-        </template>
-
-        <!-- 额外说明文本 -->
-        <div
-          v-if="decoratorProps.extra && fieldState?.display !== 'hidden'"
-          class="lowcode-field__extra"
+      <!--
+        绝对定位模式：跳过 FormItem 外壳，直接渲染裸 Widget
+        原因：el-form-item（label + input）高度约 70px，但 x-position.height 通常为 40px
+             若继续使用 FormItem，内容会溢出操作层框体，导致两者视觉分离
+             Free/Absolute 布局语义上不需要 label 包裹，用户通过位置/尺寸精确控制
+      -->
+      <template v-if="isAbsoluteMode">
+        <!-- Select 系列：需要注入 options -->
+        <el-select
+          v-if="schema['x-component'] === 'Select'"
+          v-model="fieldValue"
+          :disabled="isDisabled"
+          :placeholder="placeholder"
+          :loading="fieldState?.loading"
+          v-bind="mergedComponentProps"
+          style="width: 100%; height: 100%"
         >
-          {{ decoratorProps.extra }}
-        </div>
-      </el-form-item>
+          <el-option
+            v-for="opt in fieldState?.dataSource ?? []"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
 
-      <!-- ② 无装饰器（void 容器或自定义 decorator） -->
-      <component
-        v-else-if="decorator !== 'FormItem' && widgetComponent"
-        :is="widgetComponent"
-        v-model="fieldValue"
-        :disabled="isDisabled"
-        v-bind="mergedComponentProps"
-      />
+        <!-- CheckboxGroup -->
+        <el-checkbox-group
+          v-else-if="schema['x-component'] === 'CheckboxGroup'"
+          v-model="fieldValue"
+          :disabled="isDisabled"
+          v-bind="mergedComponentProps"
+        >
+          <el-checkbox
+            v-for="opt in fieldState?.dataSource ?? []"
+            :key="opt.value"
+            :label="opt.value"
+          >{{ opt.label }}</el-checkbox>
+        </el-checkbox-group>
+
+        <!-- RadioGroup -->
+        <el-radio-group
+          v-else-if="schema['x-component'] === 'RadioGroup'"
+          v-model="fieldValue"
+          :disabled="isDisabled"
+          v-bind="mergedComponentProps"
+        >
+          <el-radio
+            v-for="opt in fieldState?.dataSource ?? []"
+            :key="opt.value"
+            :label="opt.value"
+          >{{ opt.label }}</el-radio>
+        </el-radio-group>
+
+        <!-- 通用 Widget -->
+        <component
+          v-else-if="widgetComponent"
+          :is="widgetComponent"
+          v-model="fieldValue"
+          :disabled="isDisabled"
+          :readonly="isReadOnly"
+          :placeholder="placeholder"
+          v-bind="mergedComponentProps"
+          style="width: 100%; height: 100%"
+        />
+
+        <!-- 未注册的 Widget 降级处理 -->
+        <span v-else class="lowcode-field__unregistered">
+          [未注册组件: {{ schema['x-component'] ?? '(无)' }}]
+        </span>
+      </template>
+
+      <!-- 流式布局模式：正常渲染 FormItem 外壳 -->
+      <template v-else>
+        <!-- ① FormItem 装饰器 -->
+        <el-form-item
+          v-if="decorator === 'FormItem'"
+          :label="fieldLabel"
+          :prop="path"
+          :required="isRequired"
+          :rules="elFormRules"
+          :label-width="decoratorProps.labelWidth ? `${decoratorProps.labelWidth}px` : undefined"
+          :class="formItemClass"
+        >
+          <!-- 自定义 Label（带 tooltip） -->
+          <template v-if="decoratorProps.tooltip" #label>
+            <span>{{ fieldLabel }}</span>
+            <el-tooltip :content="decoratorProps.tooltip" placement="top">
+              <el-icon class="ml-1 cursor-help" style="color:#c0c4cc"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </template>
+
+          <!-- readPretty 模式：只显示文本 -->
+          <template v-if="isReadPretty">
+            <span class="lowcode-field__read-pretty">{{ prettyValue }}</span>
+          </template>
+
+          <!-- 正常渲染 Widget -->
+          <template v-else>
+            <!-- Select 系列：需要注入 options -->
+            <el-select
+              v-if="schema['x-component'] === 'Select'"
+              v-model="fieldValue"
+              :disabled="isDisabled"
+              :placeholder="placeholder"
+              :loading="fieldState?.loading"
+              v-bind="mergedComponentProps"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="opt in fieldState?.dataSource ?? []"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+
+            <!-- CheckboxGroup -->
+            <el-checkbox-group
+              v-else-if="schema['x-component'] === 'CheckboxGroup'"
+              v-model="fieldValue"
+              :disabled="isDisabled"
+              v-bind="mergedComponentProps"
+            >
+              <el-checkbox
+                v-for="opt in fieldState?.dataSource ?? []"
+                :key="opt.value"
+                :label="opt.value"
+              >{{ opt.label }}</el-checkbox>
+            </el-checkbox-group>
+
+            <!-- RadioGroup -->
+            <el-radio-group
+              v-else-if="schema['x-component'] === 'RadioGroup'"
+              v-model="fieldValue"
+              :disabled="isDisabled"
+              v-bind="mergedComponentProps"
+            >
+              <el-radio
+                v-for="opt in fieldState?.dataSource ?? []"
+                :key="opt.value"
+                :label="opt.value"
+              >{{ opt.label }}</el-radio>
+            </el-radio-group>
+
+            <!-- 通用 Widget（通过 ComponentRegistry 解析） -->
+            <component
+              v-else-if="widgetComponent"
+              :is="widgetComponent"
+              v-model="fieldValue"
+              :disabled="isDisabled"
+              :readonly="isReadOnly"
+              :placeholder="placeholder"
+              v-bind="mergedComponentProps"
+              style="width: 100%"
+            />
+
+            <!-- 未注册的 Widget 降级处理 -->
+            <span v-else class="lowcode-field__unregistered">
+              [未注册组件: {{ schema['x-component'] ?? '(无)' }}]
+            </span>
+          </template>
+
+          <!-- 额外说明文本 -->
+          <div
+            v-if="decoratorProps.extra && fieldState?.display !== 'hidden'"
+            class="lowcode-field__extra"
+          >
+            {{ decoratorProps.extra }}
+          </div>
+        </el-form-item>
+
+        <!-- ② 无装饰器（void 容器或自定义 decorator） -->
+        <component
+          v-else-if="decorator !== 'FormItem' && widgetComponent"
+          :is="widgetComponent"
+          v-model="fieldValue"
+          :disabled="isDisabled"
+          v-bind="mergedComponentProps"
+        />
+      </template>
     </div>
   </template>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, type CSSProperties } from 'vue'
+import { computed, inject, ref, onMounted, nextTick, type CSSProperties } from 'vue'
 import {
   ElSelect,
   ElOption,
@@ -171,7 +266,7 @@ import {
   ElFormItem,
   type FormItemRule,
 } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
+import { QuestionFilled, Delete, CopyDocument } from '@element-plus/icons-vue'
 import type { FieldSchema } from '../types/schema'
 import type { FormModel } from '../types/model'
 import {
@@ -217,6 +312,47 @@ const designMode = inject<boolean>('designMode', false)
 /** 设计器引擎（用于触发节点选中） */
 const designerEngine = inject<any>('designerEngine', null)
 
+/** 根元素引用（用于检测实际渲染尺寸） */
+const fieldWrapperRef = ref<HTMLElement | null>(null)
+
+/** 尺寸是否已自动适配过（防止重复更新） */
+const sizeAutoFitted = ref(false)
+
+/** 当前节点是否为绝对定位模式 */
+const isAbsoluteMode = computed(() => {
+  return props.schema['x-position-type'] === 'absolute'
+})
+
+/**
+ * 自由布局节点：渲染完成后自动适配操作框尺寸
+ * 拖拽添加节点时预设尺寸为 200x40，但实际 Widget 渲染后尺寸可能不同
+ * 检测真实尺寸并反馈给操作框，使其与 Widget 样式一致
+ */
+onMounted(() => {
+  // 只在设计模式 + 绝对定位 + 未适配过时执行
+  if (!designMode || !isAbsoluteMode.value || sizeAutoFitted.value) return
+  if (!fieldWrapperRef.value || !designerEngine) return
+
+  const nodeId = props.schema['x-id']
+  if (!nodeId) return
+
+  nextTick(() => {
+    if (!fieldWrapperRef.value) return
+    const rect = fieldWrapperRef.value.getBoundingClientRect()
+    const currentWidth = props.schema['x-position']?.width ?? 200
+    const currentHeight = props.schema['x-position']?.height ?? 40
+
+    // 只有尺寸差异大于 1px 才更新
+    if (Math.abs(rect.width - currentWidth) > 1 || Math.abs(rect.height - currentHeight) > 1) {
+      designerEngine.updateNodeFreeSize(nodeId, {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      })
+    }
+    sizeAutoFitted.value = true
+  })
+})
+
 /** 当前选中的节点 ID（由 XLayout 注入） */
 const selectedNodeId = inject<{ value: string | null }>('selectedNodeId', { value: null })
 
@@ -235,6 +371,20 @@ function handleWrapperClick(): void {
   } else if (designerEngine) {
     designerEngine.selectNode(nodeId)
   }
+}
+
+/** 复制节点 */
+function handleDuplicate(): void {
+  const nodeId = props.schema['x-id']
+  if (!nodeId || !designerEngine) return
+  designerEngine.duplicateNode(nodeId)
+}
+
+/** 删除节点 */
+function handleRemove(): void {
+  const nodeId = props.schema['x-id']
+  if (!nodeId || !designerEngine) return
+  designerEngine.removeNode(nodeId)
 }
 
 // ============================================================
@@ -461,11 +611,84 @@ const elFormRules = computed<FormItemRule[]>(() => {
   outline-offset: -1px;
 }
 
+/** 绝对定位节点：去掉 padding，防止溢出；overflow:hidden 兜底，Element Plus 弹层不受影响 */
+.lowcode-field-wrapper--absolute {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
 /** 设计模式下，选中节点的蓝色边框高亮 */
 .lowcode-field-wrapper--selected {
   outline: 2px solid #409eff;
   outline-offset: -2px;
   background: rgba(64, 158, 255, 0.05);
+}
+
+/** 设计模式下，hover 高亮（未选中时）- 只在 design-mode class 下生效 */
+.lowcode-field-wrapper.design-mode:hover {
+  outline: 1px dashed #409eff;
+  outline-offset: -1px;
+}
+
+/** 操作按钮容器 */
+.design-actions {
+  display: none;
+  position: absolute;
+  top: -32px;
+  right: 0;
+  align-items: center;
+  gap: 2px;
+  background: #409eff;
+  border-radius: 3px;
+  padding: 3px 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+}
+
+.lowcode-field-wrapper--selected .design-actions {
+  display: flex;
+}
+
+/** Hover 时的占位元素（用于触发 tooltip） */
+.design-hover-placeholder {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  height: 20px;
+  width: 1px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.design-actions__label {
+  font-size: 11px;
+  color: #fff;
+  margin-right: 4px;
+  line-height: 1;
+}
+
+.design-actions__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.design-actions__btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.design-actions__btn--danger:hover {
+  background: #f56c6c;
 }
 
 .lowcode-field__extra {

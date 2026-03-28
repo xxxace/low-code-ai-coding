@@ -98,20 +98,35 @@
               class="canvas-renderer__preview"
             />
           </div>
-        </div>
 
-        <!-- Absolute 节点交互层（放在 canvas-container 外面，不受 pointer-events: none 影响） -->
-        <AbsoluteNodeOverlay
-          v-if="currentSchema"
-          :schema="currentSchema"
-          :selected-node-id="engine.selectedNodeId.value"
-          @select-node="engine.selectNode"
-          @remove-node="handleRemoveNode"
-          @duplicate-node="handleDuplicateNode"
-          @update-node-position="handleUpdateNodePosition"
-          @update-node-size="handleUpdateNodeSize"
-          @save-snapshot="engine.saveNodePositionSnapshot"
-        />
+          <!-- Absolute 节点交互层（处理自由布局节点的拖拽缩放） -->
+          <AbsoluteNodeOverlay
+            v-if="currentSchema"
+            :schema="currentSchema"
+            :selected-node-id="engine.selectedNodeId.value"
+            @select-node="engine.selectNode"
+            @remove-node="handleRemoveNode"
+            @duplicate-node="handleDuplicateNode"
+            @update-node-position="handleUpdateNodePosition"
+            @update-node-size="handleUpdateNodeSize"
+            @save-snapshot="engine.saveNodePositionSnapshot"
+          />
+
+          <!-- 流式布局交互层（处理 hover 高亮、点击选中、拖拽排序、上下移动） -->
+          <DesignOverlay
+            v-if="currentSchema"
+            :schema="currentSchema"
+            :selected-node-id="engine.selectedNodeId.value"
+            :canvas-el="canvasRef"
+            @select-node="engine.selectNode"
+            @remove-node="handleRemoveNode"
+            @duplicate-node="handleDuplicateNode"
+            @move-node="handleMoveNode"
+            @reorder-nodes="handleReorderNodes"
+            @move-to-container="handleMoveToContainer"
+            @move-across-containers="handleMoveAcrossContainers"
+          />
+        </div>
       </div>
 
       <!-- 右侧属性面板 -->
@@ -179,6 +194,7 @@ import MaterialPalette from "./MaterialPalette.vue";
 import PageProperties from "./PageProperties.vue";
 import FieldProperties from "./FieldProperties.vue";
 import AbsoluteNodeOverlay from "./AbsoluteNodeOverlay.vue";
+import DesignOverlay from "./DesignOverlay.vue";
 import {
   createDefaultRegistry,
   COMPONENT_REGISTRY_KEY,
@@ -311,6 +327,30 @@ function handleRemoveNode(nodeId: string): void {
 
 function handleDuplicateNode(nodeId: string): void {
   engine.duplicateNode(nodeId);
+}
+
+function handleMoveNode(nodeId: string, direction: 'up' | 'down'): void {
+  engine.moveNode(nodeId, direction);
+}
+
+function handleReorderNodes(
+  fromId: string,
+  toId: string,
+  position: 'before' | 'after'
+): void {
+  engine.sortNodes(fromId, toId, position);
+}
+
+function handleMoveToContainer(nodeId: string, containerId: string): void {
+  engine.moveNodeToContainer(nodeId, containerId);
+}
+
+function handleMoveAcrossContainers(
+  nodeId: string,
+  targetId: string,
+  position: 'before' | 'after'
+): void {
+  engine.moveNodeAcrossContainers(nodeId, targetId, position);
 }
 
 function handleExport(): void {
@@ -555,7 +595,6 @@ function generateSchemaId(): string {
 }
 
 .canvas-renderer {
-  position: relative;
   width: 100%;
 }
 

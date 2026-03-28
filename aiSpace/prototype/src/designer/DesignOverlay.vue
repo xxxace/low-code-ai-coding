@@ -274,7 +274,8 @@ const flatNodes = computed<FlatNode[]>(() => {
 
   function walk(properties: Record<string, FieldSchema>, parentId: string) {
     for (const [, schema] of Object.entries(properties)) {
-      if (schema['x-id']) {
+      // 过滤掉绝对定位节点（由 AbsoluteNodeOverlay 单独处理）
+      if (schema['x-id'] && schema['x-position-type'] !== 'absolute') {
         nodes.push({
           id: schema['x-id'],
           label: schema.title ?? schema['x-component'] ?? '未知',
