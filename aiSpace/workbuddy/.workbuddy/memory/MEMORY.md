@@ -180,5 +180,15 @@
 - 修复：1) AbsoluteNodeOverlay 移入 canvas-container 内；2) 去掉 canvas-renderer 的 position:relative；3) 去掉 XLayout 的 position:relative；4) FieldRenderer absolute 模式加 overflow:hidden + padding:0
 - 测试：154 个单元测试全部通过，TypeScript 零错误，Vite 构建成功
 
+**实现流式节点拖入 absolute 容器（2026-03-28 下午）**：
+- 问题：流式节点（relative）拖拽到绝对定位容器时无法触发 hover 高亮和 drop
+- 根因（第一层）：FlatNode 接口缺少 positionType 字段
+- 根因（第二层，2026-03-28 傍晚发现）：DesignOverlay 和 AbsoluteNodeOverlay 没有设置 `z-index`，导致 Element Plus 组件（如 el-card）创建的层叠上下文覆盖了 overlay-item，dragover 事件被容器截获
+- 修复：
+  1. FlatNode 接口添加 positionType: 'relative' | 'absolute' 字段
+  2. refreshOverlay 过滤 absolute 非容器节点，保留 absolute 容器作为拖拽目标
+  3. **DesignOverlay 添加 z-index: 100（容器）和 z-index: 101（overlay-item）**，确保覆盖 Element Plus 组件
+- 验证：154 个单元测试全部通过，TypeScript 零错误，Vite 构建成功
+
 开发服务器：`http://localhost:5173`（在 prototype/ 目录运行 npx vite）
 运行测试：`cd prototype && npx vitest run`
