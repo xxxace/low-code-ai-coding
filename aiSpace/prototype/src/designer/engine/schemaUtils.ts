@@ -370,18 +370,19 @@ export function moveNodeToContainer(
 // ============================================================
 
 /**
- * 更新 x-position 节点的 x/y 位置（用于 absolute 定位节点拖拽）
+ * 更新 x-position 节点的 x/y 位置（用于 absolute 定位节点拖拽/方向键微调）
+ * @param position 允许只传 x 或只传 y，只更新提供的属性
  */
 export function updateNodePositionById(
   properties: Record<string, FieldSchema>,
   nodeId: string,
-  position: { x: number; y: number }
+  position: { x?: number; y?: number }
 ): boolean {
   for (const fieldSchema of Object.values(properties)) {
     if (fieldSchema['x-id'] === nodeId) {
       if (fieldSchema['x-position']) {
-        fieldSchema['x-position'].x = position.x
-        fieldSchema['x-position'].y = position.y
+        if (position.x !== undefined) fieldSchema['x-position'].x = position.x
+        if (position.y !== undefined) fieldSchema['x-position'].y = position.y
       }
       return true
     }
