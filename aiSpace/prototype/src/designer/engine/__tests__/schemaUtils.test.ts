@@ -19,8 +19,6 @@ import {
   sortNodesInSchema,
   moveNodeById,
   moveNodeToContainer,
-  updateNodeFreePositionById,
-  updateNodeFreeSizeById,
 } from '../schemaUtils'
 import type { ObjectFieldSchema, VoidFieldSchema, FieldSchema } from '../../../core/schema'
 
@@ -400,77 +398,3 @@ describe('moveNodeToContainer', () => {
   })
 })
 
-// ============================================================
-// updateNodeFreePositionById
-// ============================================================
-
-describe('updateNodeFreePositionById', () => {
-  it('更新自由布局位置', () => {
-    const schema: ObjectFieldSchema = {
-      type: 'object',
-      properties: {
-        field1: {
-          type: 'string',
-          'x-id': 'free-1',
-          'x-free-position': { x: 10, y: 20, width: 200, height: 40 },
-        },
-      },
-    }
-
-    const result = updateNodeFreePositionById(schema.properties!, 'free-1', { x: 100, y: 200 })
-    expect(result).toBe(true)
-    expect(schema.properties!['field1']['x-free-position']!.x).toBe(100)
-    expect(schema.properties!['field1']['x-free-position']!.y).toBe(200)
-    // width/height 不变
-    expect(schema.properties!['field1']['x-free-position']!.width).toBe(200)
-  })
-
-  it('节点没有 x-free-position 时不报错但位置不更新', () => {
-    const schema: ObjectFieldSchema = {
-      type: 'object',
-      properties: {
-        field1: {
-          type: 'string',
-          'x-id': 'no-pos',
-        },
-      },
-    }
-
-    const result = updateNodeFreePositionById(schema.properties!, 'no-pos', { x: 100, y: 200 })
-    expect(result).toBe(true) // 节点找到了，但没有 free-position，不操作
-  })
-
-  it('不存在的节点返回 false', () => {
-    expect(updateNodeFreePositionById({}, 'nonexistent', { x: 0, y: 0 })).toBe(false)
-  })
-})
-
-// ============================================================
-// updateNodeFreeSizeById
-// ============================================================
-
-describe('updateNodeFreeSizeById', () => {
-  it('更新自由布局宽高', () => {
-    const schema: ObjectFieldSchema = {
-      type: 'object',
-      properties: {
-        field1: {
-          type: 'string',
-          'x-id': 'free-1',
-          'x-free-position': { x: 10, y: 20, width: 200, height: 40 },
-        },
-      },
-    }
-
-    const result = updateNodeFreeSizeById(schema.properties!, 'free-1', { width: 300, height: 60 })
-    expect(result).toBe(true)
-    expect(schema.properties!['field1']['x-free-position']!.width).toBe(300)
-    expect(schema.properties!['field1']['x-free-position']!.height).toBe(60)
-    // x/y 不变
-    expect(schema.properties!['field1']['x-free-position']!.x).toBe(10)
-  })
-
-  it('不存在的节点返回 false', () => {
-    expect(updateNodeFreeSizeById({}, 'nonexistent', { width: 0, height: 0 })).toBe(false)
-  })
-})

@@ -24,7 +24,7 @@
 | `FieldRenderer.vue` | 接入 ComponentRegistry；Select/Checkbox/Radio options 渲染；readPretty 只读模式；designMode 强制可见；隐藏字段半透明+黄虚线；ContainerNode 占位分支（type='container'） |
 | `VoidContainer.vue` | void 容器渲染器（Card/Tabs/Collapse/Divider）；data-field-id 属性 + 选中高亮；子节点递归渲染 |
 | `FlowLayout` | display:flex + flex-wrap；字段宽度 = (x-span / columns) × 100%；支持 1~24 列 |
-| `FreeLayout` | 自由定位组件（left/top/width/height），画布已有 |
+| `FreeLayout` | ~~已删除~~ → 已由 XLayout.vue 统一渲染层替代 |
 
 ### 设计器 UI（designer/）
 
@@ -53,7 +53,7 @@
 | TypeScript | tsc --noEmit 零错误 |
 | Vite 构建 | vite build 成功（1663 模块，无报错） |
 | 开发服务器 | `npx vite`（prototype/ 目录），端口 5173 |
-| 单元测试 | Vitest 4.1.2 + @vue/test-utils + happy-dom；152 个测试全部通过（schemaUtils 43 / HistoryManager 16 / ComponentRegistry 24 / FormModel 52 / ReactionsEngine 17） |
+| 单元测试 | Vitest 4.1.2 + @vue/test-utils + happy-dom；149 个测试全部通过（schemaUtils 41 / HistoryManager 16 / ComponentRegistry 24 / FormModel 52 / ReactionsEngine 16） |
 
 ### 容器组件（VoidContainer）
 
@@ -70,7 +70,7 @@
 | 功能 | 现状 | 备注 |
 |---|---|---|
 | ContainerNode / GroupRenderer.vue | Schema 类型已定义，FieldRenderer 有分支，GroupRenderer.vue 未建 | 嵌套渲染未实现（VoidFieldSchema 已覆盖 Card/Tabs/Collapse/Divider） |
-| FreeLayout 拖拽移动 + 8方向缩放 | FreeCanvas/FreeLayout 组件存在，deskclaw 已调研方案 | 交互逻辑未实现 |
+| FreeLayout 拖拽移动 + 8方向缩放 | ~~FreeCanvas/FreeLayout~~ → 已由 XLayout + AbsoluteNodeOverlay 替代 | ✅ Step 5 迁移完成 |
 | FunctionRegistry 逃生舱 | 接口类型已占位（用户写 setup 函数） | 无实际运行时 |
 | designerBus 消费方 | mitt 实例已建、事件类型已定义 | 目前无任何消费方 |
 | 插件加载/注册运行时 | plugin-api.d.ts 类型契约已写 | 无加载机制 |
@@ -116,7 +116,7 @@
 |---|---|
 | 响应式系统 | Vue 3 原生 reactive/watchEffect（不引入第三方响应式） |
 | Schema 基础 | JSON Schema draft-07 + x-* 扩展 |
-| 布局 | 双布局（flow + free）统一一套 Schema，按 layoutMode 切换 |
+| 布局 | x-position-type per-field（relative=流式，absolute=自由）；layoutMode 已移除（Step 5 迁移） |
 | 关系字段 | x-relation 扩展对接 RelationRegister |
 | 历史记录 | JSON 快照模式（snapshots[] + index） |
 | 包结构 | 3 包 Monorepo（core/renderer/designer）——规划，未拆；stdform 适配层已移除 |
@@ -155,9 +155,9 @@ prototype/src/
     composables/
       useMaterialDrag.ts
       useKeyboardShortcuts.ts
-    Designer.vue
     LowcodeDesigner.vue
     DesignOverlay.vue
+    AbsoluteNodeOverlay.vue
     FieldProperties.vue
     PageProperties.vue
     ReactionEditorDialog.vue
@@ -165,9 +165,9 @@ prototype/src/
     OptionsEditor.vue
     MaterialPalette.vue
   renderer/
+    XLayout.vue
     FieldRenderer.vue
     FlowLayout.vue
-    FreeLayout.vue
     VoidContainer.vue
   types/              ← 垫片层，全部 re-export from core/
   test/

@@ -366,56 +366,6 @@ export function moveNodeToContainer(
 }
 
 // ============================================================
-// 位置更新（自由布局专用）
-// ============================================================
-
-/**
- * 更新自由布局节点的 x/y 位置
- */
-export function updateNodeFreePositionById(
-  properties: Record<string, FieldSchema>,
-  nodeId: string,
-  position: { x: number; y: number }
-): boolean {
-  for (const fieldSchema of Object.values(properties)) {
-    if (fieldSchema['x-id'] === nodeId) {
-      if (fieldSchema['x-free-position']) {
-        fieldSchema['x-free-position'].x = position.x
-        fieldSchema['x-free-position'].y = position.y
-      }
-      return true
-    }
-    if ('properties' in fieldSchema && fieldSchema.properties) {
-      if (updateNodeFreePositionById(fieldSchema.properties, nodeId, position)) return true
-    }
-  }
-  return false
-}
-
-/**
- * 更新自由布局节点的宽高
- */
-export function updateNodeFreeSizeById(
-  properties: Record<string, FieldSchema>,
-  nodeId: string,
-  size: { width: number; height: number }
-): boolean {
-  for (const fieldSchema of Object.values(properties)) {
-    if (fieldSchema['x-id'] === nodeId) {
-      if (fieldSchema['x-free-position']) {
-        fieldSchema['x-free-position'].width = size.width
-        fieldSchema['x-free-position'].height = size.height
-      }
-      return true
-    }
-    if ('properties' in fieldSchema && fieldSchema.properties) {
-      if (updateNodeFreeSizeById(fieldSchema.properties, nodeId, size)) return true
-    }
-  }
-  return false
-}
-
-// ============================================================
 // x-position 更新（XLayout 架构使用）
 // ============================================================
 

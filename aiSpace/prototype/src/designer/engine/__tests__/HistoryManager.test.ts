@@ -14,7 +14,6 @@ function createSchema(name: string): PageSchema {
     version: '1.0',
     id: `form-${Date.now()}`,
     name,
-    layoutMode: 'flow',
     formConfig: { labelWidth: 120 },
     schema: { type: 'object', properties: {} },
   }

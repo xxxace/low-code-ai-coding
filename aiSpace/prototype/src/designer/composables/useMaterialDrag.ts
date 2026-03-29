@@ -7,9 +7,9 @@
  * - 处理拖拽开始（记录拖拽的物料）、放置（计算坐标 + 创建节点）
  * - 处理点击物料直接插入
  *
- * layoutMode 对新增节点的影响：
- * - 'flow': x-position-type=relative, x-span=1
- * - 'free': x-position-type=absolute, x-position={x,y,width,height}
+ * isFreelayout 对新增节点的影响：
+ * - false: x-position-type=relative, x-span=1（流式布局）
+ * - true: x-position-type=absolute, x-position={x,y,width,height}（自由定位）
  */
 
 import { ref } from 'vue'
@@ -31,7 +31,7 @@ export function useMaterialDrag(engine: DesignerEngine) {
   /**
    * 点击物料直接添加到画布末尾
    * @param material 物料元信息
-   * @param isFreelayout 是否为自由布局模式（layoutMode === 'free'）
+   * @param isFreelayout 是否为自由布局模式（x-position-type === 'absolute'）
    */
   function handleMaterialClick(material: any, isFreelayout: boolean): void {
     const fieldKey = `field_${Date.now()}`

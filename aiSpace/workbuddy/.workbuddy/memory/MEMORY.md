@@ -29,7 +29,7 @@
 |------|------|------|
 | 响应式系统 | 使用 Vue 3 原生 reactive/watchEffect | 避免两套响应式系统，减少学习成本 |
 | Schema 基础 | JSON Schema draft-07 + x-* 扩展 | 标准化，后端友好，与 Formily 部分兼容 |
-| 布局模式 | `x-position-type: 'flow' \| 'free'` + XLayout 统一渲染 | 取代 layoutMode 全局开关，每个字段独立决定定位类型，FlowLayout + FreeLayout 和谐共存 |
+| 布局模式 | `x-position-type: 'relative' \| 'absolute'` + XLayout 统一渲染 | 取代 layoutMode 全局开关，每个字段独立决定定位类型；Step 5 迁移完成，layoutMode 已移除 |
 | 关系字段 | x-relation 扩展，对接 RelationRegister | MES 业务特有需求，已有 StdForm 基础设施 |
 | 历史记录 | JSON 快照模式（snapshots[] + index） | 简单可靠，visual-drag-demo 验证过 |
 | 包结构 | 3 包 Monorepo（core/renderer/designer） | StdForm 已移除规划 |
@@ -68,13 +68,15 @@
 - 异步：async/await + try-catch
 - 禁止使用 var，禁止直接操作 DOM
 
-## 当前进度（2026-03-28，第十六阶段进行中）
+## 当前进度（2026-03-29，Step 5 完成）
+
+**第十六阶段 XLayout 架构演进**：Step 0~5 全部完成 ✅
 
 **已完成全部功能（15 个阶段）**，详见 `FEATURE_CHECKLIST.md`。
 
 核心能力：
 - core/ 全部模块（schema/model/reactions/registry）
-- renderer/（FieldRenderer/FlowLayout/FreeLayout/VoidContainer/XLayout）
+- renderer/（FieldRenderer/FlowLayout/VoidContainer/XLayout）
 - designer/ 全部 UI 组件 + engine + composables
 - 容器组件（Card/Tabs/Collapse/Divider）物料注册 + 设计器交互
 - 跨容器拖拽（容器内↔容器外，原子操作 moveNodeAcrossContainers）
@@ -107,8 +109,9 @@
 | 3.1 | Flow/Free 交互分离架构重构 + 属性面板定位类型选择器 | ✅ `78eec2a` |
 | 3.2 | 双层交互系统集成 + 坐标偏移修复 + VoidContainer 高度自适应 | ✅ `1a2aa9d` |
 | 3.3 | absolute 容器 overlay 叠加问题修复 | ✅ `9480014` |
-| Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 待实现 |
-| Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ⏳ 待实现 |
+| Step 4 | 批量切换工具栏 + PositionTypeSetter | ⏳ 下一步 |
+| Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ✅ 2026-03-29 |
+| Step 5 | 旧 Schema 迁移（layoutMode → x-position-type） | ✅ 2026-03-29 完成（删除4文件，修改10文件，149测试通过） |
 
 ### Step 0 关键决策
 - **定位样式透传**：XLayout 的 getNodeStyle() 通过 `nodeStyle` prop 透传给 VoidContainer/FieldRenderer 根元素
@@ -190,8 +193,7 @@
 - `core/schema.ts`（新增 x-position-type 和 x-position 类型）
 
 ### 待实现功能（按优先级）
-1. Step 4: 批量切换工具栏 + PositionTypeSetter 属性面板（高优）
-2. Step 5: 旧 Schema 迁移（layoutMode → x-position-type）（高优）
+1. Step 4: 批量切换工具栏 + PositionTypeSetter 属性面板（高优，下一步）
 3. x-relation 关系字段 UI（中）
 4. 其他低优先级项见 FEATURE_CHECKLIST.md
 
@@ -224,6 +226,8 @@ vue-tsc 零错误，154 测试全通过，Vite 构建成功。
 上述质检和类型修复尚未 git commit（14 个 modified + 2 个 untracked 文件）。
 
 ### 第十六阶段进度（2026-03-29）
+
+Step 5 Schema 迁移完成（2026-03-29 17:18）
 
 commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014` → `232b0aa` → `7aec6f3` → `63bb1f0` → `25f76da`
 

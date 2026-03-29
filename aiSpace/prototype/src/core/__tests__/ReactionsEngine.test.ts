@@ -31,7 +31,6 @@ function createTestSchema(overrides?: Partial<PageSchema>): PageSchema {
     version: '1.0',
     id: 'test-reactions',
     name: '联动测试',
-    layoutMode: 'flow',
     formConfig: {},
     schema: {
       type: 'object',

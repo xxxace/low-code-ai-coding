@@ -26,8 +26,6 @@ import {
   moveNodeById,
   sortNodesInSchema,
   moveNodeToContainer as moveNodeToContainerUtil,
-  updateNodeFreePositionById,
-  updateNodeFreeSizeById,
   updateNodePositionById,
   updateNodeSizeById,
   moveNodeAcrossContainers as moveNodeAcrossContainersUtil,
@@ -58,7 +56,6 @@ export function useDesignerEngine() {
       version: '1.0',
       id: `form-${Date.now()}`,
       name,
-      layoutMode: 'flow',
       formConfig: {
         labelWidth: 120,
         labelPosition: 'right',
@@ -290,24 +287,6 @@ export function useDesignerEngine() {
     designerBus.emit('schema:changed', { schema: newSchema })
   }
 
-  function updateNodeFreePosition(
-    nodeId: string,
-    position: { x: number; y: number }
-  ): void {
-    if (!schema.value) return
-    // 直接操作 reactive schema，跳过深拷贝（ResizeObserver 回调用）
-    updateNodeFreePositionById(schema.value.schema.properties, nodeId, position)
-  }
-
-  function updateNodeFreeSize(
-    nodeId: string,
-    size: { width: number; height: number }
-  ): void {
-    if (!schema.value) return
-    // 直接操作 reactive schema，跳过深拷贝（ResizeObserver 回调用）
-    updateNodeFreeSizeById(schema.value.schema.properties, nodeId, size)
-  }
-
   /**
    * 更新 absolute 定位节点的 x/y 位置（XLayout 架构）
    * 注意：不记录快照，由 AbsoluteNodeOverlay 组件控制何时保存
@@ -412,8 +391,6 @@ const handleSubmit = (values: Record<string, any>) => {
     moveNodeToContainer,
     moveNodeAcrossContainers,
     updateNodeProps,
-    updateNodeFreePosition,
-    updateNodeFreeSize,
     updateNodePosition,
     updateNodeSize,
     saveNodePositionSnapshot,

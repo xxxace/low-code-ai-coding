@@ -26,9 +26,9 @@
 
       <div class="toolbar-center flex items-center gap-2">
         <!-- 布局模式切换 -->
-        <el-radio-group v-model="layoutMode" size="small">
-          <el-radio-button value="flow">流式布局</el-radio-button>
-          <el-radio-button value="free">自由布局</el-radio-button>
+        <el-radio-group v-model="pagePositionType" size="small">
+          <el-radio-button value="relative">流式布局</el-radio-button>
+          <el-radio-button value="absolute">自由布局</el-radio-button>
         </el-radio-group>
       </div>
 
@@ -68,7 +68,7 @@
       <div class="lowcode-designer__palette">
         <MaterialPalette
           @drag-start="handleMaterialDragStartFromPalette"
-          @material-click="(m) => handleMaterialClick(m, layoutMode === 'free')"
+          @material-click="(m) => handleMaterialClick(m, pagePositionType === 'absolute')"
         />
       </div>
 
@@ -76,7 +76,7 @@
       <div
         class="lowcode-designer__canvas"
         @dragover.prevent
-        @drop="(e) => handleCanvasDrop(e, canvasRef, layoutMode === 'free')"
+        @drop="(e) => handleCanvasDrop(e, canvasRef, pagePositionType === 'absolute')"
         @click.self="engine.selectNode(null)"
       >
         <div
@@ -249,13 +249,11 @@ const isSchemaEmpty = computed(() => {
   return Object.keys(currentSchema.value.schema.properties).length === 0;
 });
 
-const layoutMode = computed({
-  get: () => currentSchema.value?.layoutMode ?? "flow",
-  set: (mode) => {
+const pagePositionType = computed({
+  get: () => currentSchema.value?.['x-position-type'] ?? "relative",
+  set: (type) => {
     if (!engine.schema.value) return;
-    const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
-    newSchema.layoutMode = mode;
-    engine.loadSchema(newSchema);
+    engine.schema.value['x-position-type'] = type as 'relative' | 'absolute';
   },
 });
 

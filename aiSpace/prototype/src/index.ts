@@ -20,11 +20,9 @@ export type {
   ScalarFieldSchema,
   BaseFieldSchema,
   // 布局 & 状态
-  LayoutMode,
   FieldType,
   DisplayState,
   PatternState,
-  FreePosition,
   FormConfig,
   // 联动
   Reaction,
@@ -90,7 +88,6 @@ export type {
 // ── 渲染器（Vue 组件） ────────────────────────────────────────────────────
 export { default as FormRenderer } from './renderer/FormRenderer.vue'
 export { default as FlowLayout } from './renderer/FlowLayout.vue'
-export { default as FreeLayout } from './renderer/FreeLayout.vue'
 export { default as FieldRenderer } from './renderer/FieldRenderer.vue'
 export { default as VoidContainer } from './renderer/VoidContainer.vue'
 
@@ -114,8 +111,6 @@ export {
   duplicateNodeById,
   sortNodesInSchema,
   moveNodeById,
-  updateNodeFreePositionById,
-  updateNodeFreeSizeById,
 } from './designer/engine/schemaUtils'
 
 // 新增：设计器事件总线

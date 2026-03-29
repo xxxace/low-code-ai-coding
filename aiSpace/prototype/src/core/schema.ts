@@ -18,8 +18,6 @@
 // 基础类型
 // ============================================================
 
-export type LayoutMode = 'flow' | 'free'
-
 export type FieldType =
   | 'string'
   | 'number'
@@ -55,27 +53,6 @@ export type LocalizedString = string | I18nString
 export function resolveLocalizedString(val: LocalizedString, locale = 'zh'): string {
   if (typeof val === 'string') return val
   return val[locale] ?? val['zh'] ?? ''
-}
-
-// ============================================================
-// 自由布局位置信息
-// ============================================================
-
-export interface FreePosition {
-  /** 距左边距（px） */
-  x: number
-  /** 距顶边距（px） */
-  y: number
-  /** 宽度（px） */
-  width: number
-  /** 高度（px） */
-  height: number
-  /** 层级（默认 1） */
-  zIndex?: number
-  /** 旋转角度（°，默认 0） */
-  rotate?: number
-  /** 是否在设计器中锁定（不可拖拽） */
-  locked?: boolean
 }
 
 // ============================================================
@@ -322,8 +299,6 @@ export interface BaseFieldSchema {
   'x-span'?: number
   /** 字段排序权重（流式布局用） */
   'x-order'?: number
-  /** 自由布局的位置信息 */
-  'x-free-position'?: FreePosition
   /** 节点定位类型（XLayout 使用）: relative=流式排列，absolute=自由定位，默认 relative */
   'x-position-type'?: 'relative' | 'absolute'
   /** 绝对定位坐标（x-position-type=absolute 时有效） */
@@ -482,7 +457,6 @@ export interface PageSchema {
   version: string
   id: string
   name: string
-  layoutMode: LayoutMode
   formConfig: FormConfig
   /** 字段/容器节点树（根必须是 ObjectFieldSchema） */
   schema: ObjectFieldSchema

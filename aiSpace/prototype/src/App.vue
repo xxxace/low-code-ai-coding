@@ -102,7 +102,6 @@ const demoSchema: PageSchema = {
   version: "1.0",
   id: "demo-form-001",
   name: "员工信息表单",
-  layoutMode: "flow",
   formConfig: {
     labelWidth: 100,
     labelPosition: "top",

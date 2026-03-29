@@ -18,7 +18,6 @@ function createTestSchema(overrides?: Partial<PageSchema>): PageSchema {
     version: '1.0',
     id: 'test-form',
     name: '测试表单',
-    layoutMode: 'flow',
     formConfig: { columns: 2 },
     schema: {
       type: 'object',

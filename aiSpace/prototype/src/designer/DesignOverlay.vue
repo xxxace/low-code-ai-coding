@@ -463,9 +463,9 @@ function handleItemClick(nodeId: string): void {
   emit('select-node', nodeId)
 }
 
-// 判断是否为自由布局模式
+// 判断是否为自由布局模式（x-position-type === 'absolute' 时为自由布局）
 const isFreeLayout = computed(() => {
-  return props.schema?.layoutMode === 'free'
+  return props.schema?.['x-position-type'] === 'absolute'
 })
 
 // ============================================================
