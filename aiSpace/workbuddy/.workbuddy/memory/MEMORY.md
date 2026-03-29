@@ -223,11 +223,11 @@ vue-tsc 零错误，154 测试全通过，Vite 构建成功。
 
 上述质检和类型修复尚未 git commit（14 个 modified + 2 个 untracked 文件）。
 
-### 第十六阶段进度（2026-03-28）
+### 第十六阶段进度（2026-03-29）
 
-commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014` → `232b0aa` → `7aec6f3` → `63bb1f0`
+commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014` → `232b0aa` → `7aec6f3` → `63bb1f0` → `25f76da`
 
-**最新 commit**：`63bb1f0` - 修复 AbsoluteNodeOverlay 层级低于 DesignOverlay 的问题
+**最新 commit**：`25f76da` - 修复 absolute 容器节点 overlay 高度不同步问题
 
 已完成的核心工作：
 - XLayout 统一渲染器（替代条件渲染分支）
