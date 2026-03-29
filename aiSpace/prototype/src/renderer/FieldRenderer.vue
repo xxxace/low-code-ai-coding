@@ -331,7 +331,7 @@ onMounted(() => {
 
     // 只有尺寸差异大于 1px 才更新
     if (Math.abs(rect.width - currentWidth) > 1 || Math.abs(rect.height - currentHeight) > 1) {
-      designerEngine.updateNodeFreeSize(nodeId, {
+      designerEngine.updateNodeSize(nodeId, {
         width: Math.round(rect.width),
         height: Math.round(rect.height)
       })

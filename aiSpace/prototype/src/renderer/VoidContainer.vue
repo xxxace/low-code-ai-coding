@@ -252,7 +252,7 @@ function syncContainerSize(): void {
     Math.abs(rect.width - currentWidth) > 1 ||
     Math.abs(rect.height - currentHeight) > 1
   ) {
-    designerEngine.updateNodeFreeSize(nodeId, {
+    designerEngine.updateNodeSize(nodeId, {
       width: Math.round(rect.width),
       height: Math.round(rect.height),
     });
