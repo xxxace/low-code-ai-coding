@@ -316,6 +316,25 @@ export function useDesignerEngine() {
   }
 
   /**
+   * 按方向键微调 absolute 节点的 x/y 位置（1px，Shift+方向键 10px）
+   */
+  function nudgeNode(nodeId: string, direction: 'left' | 'right' | 'up' | 'down', step: number): void {
+    if (!schema.value) return
+    const node = findNodeById(schema.value.schema, nodeId)
+    if (!node || node['x-position-type'] !== 'absolute') return
+    const pos = node['x-position']
+    if (!pos) return
+
+    const updates: { x?: number; y?: number } = {}
+    if (direction === 'left') updates.x = Math.max(0, (pos.x ?? 0) - step)
+    if (direction === 'right') updates.x = (pos.x ?? 0) + step
+    if (direction === 'up') updates.y = Math.max(0, (pos.y ?? 0) - step)
+    if (direction === 'down') updates.y = (pos.y ?? 0) + step
+
+    updateNodePositionById(schema.value.schema.properties, nodeId, updates)
+  }
+
+  /**
    * 保存 absolute 节点拖拽/缩放的快照（拖拽结束时调用）
    */
   function saveNodePositionSnapshot(): void {
@@ -393,6 +412,7 @@ const handleSubmit = (values: Record<string, any>) => {
     updateNodeProps,
     updateNodePosition,
     updateNodeSize,
+    nudgeNode,
     saveNodePositionSnapshot,
     selectNode,
     exportSchema,

@@ -25,6 +25,9 @@
       </div>
 
       <div class="toolbar-center flex items-center gap-2">
+        <!-- 布局模式指示器 -->
+        <span class="mode-badge mode-badge--design">设计模式</span>
+
         <!-- 布局模式切换 -->
         <el-radio-group v-model="pagePositionType" size="small">
           <el-radio-button value="relative">流式布局</el-radio-button>
@@ -86,8 +89,16 @@
         >
           <!-- 空状态提示 -->
           <div v-if="isSchemaEmpty" class="canvas-empty">
-            <el-icon class="text-4xl text-gray-300"><Plus /></el-icon>
-            <p class="text-gray-400 mt-2">拖拽左侧组件到此处</p>
+            <div class="canvas-empty__icon">
+              <el-icon class="text-5xl"><Plus /></el-icon>
+            </div>
+            <p class="canvas-empty__title">开始设计表单</p>
+            <p class="canvas-empty__hint">从左侧面板拖拽组件，或点击添加</p>
+            <div class="canvas-empty__shortcuts">
+              <span class="shortcut-tag">双击物料面板快速添加</span>
+              <span class="shortcut-tag">Delete 删除选中节点</span>
+              <span class="shortcut-tag">方向键 微调位置</span>
+            </div>
           </div>
 
           <!-- Renderer 预览（设计模式下禁用交互） -->
@@ -550,6 +561,20 @@ function generateSchemaId(): string {
   flex-shrink: 0;
 }
 
+.mode-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.mode-badge--design {
+  background: #ecf5ff;
+  color: #409eff;
+  border: 1px solid #b3d8fd;
+}
+
 .lowcode-designer__main {
   display: flex;
   flex: 1;
@@ -592,6 +617,42 @@ function generateSchemaId(): string {
   justify-content: center;
   min-height: 400px;
   pointer-events: none;
+  gap: 8px;
+}
+
+.canvas-empty__icon {
+  color: #d0d5dd;
+  margin-bottom: 4px;
+}
+
+.canvas-empty__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.canvas-empty__hint {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.canvas-empty__shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.shortcut-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
 }
 
 .canvas-renderer {
