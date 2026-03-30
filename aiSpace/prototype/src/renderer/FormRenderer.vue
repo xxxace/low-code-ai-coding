@@ -202,7 +202,7 @@ provide('formRenderer', {
 provide(DESIGN_MODE_KEY, computed(() => props.designMode))
 // 预览模式下，selectedNodeId 始终为 null，防止 inject 穿透到设计器画布的 XLayout
 // 设计模式下，XLayout 会覆盖这个 provide，提供真实的 selectedNodeId
-provide(SELECTED_NODE_ID_KEY, ref(null))
+provide(SELECTED_NODE_ID_KEY, computed(() => null))
 
 // 注入 ComponentRegistry（从父组件获取或创建默认的）
 const componentRegistry = useComponentRegistry()

@@ -137,7 +137,7 @@ import {
   type CSSProperties,
 } from "vue";
 // element-plus 组件由模板直接使用（Auto Import），此处无需显式 import
-import type { VoidFieldSchema } from "../types/schema";
+import type { VoidFieldSchema, FieldSchema } from "../types/schema";
 import type { FormModel } from "../core/model";
 import { injectDesignMode, injectSelectedNodeId, injectDesignerEngine } from "../core/injectionKeys";
 import XLayout from "./XLayout.vue";
@@ -351,7 +351,8 @@ function handleDrop(e: DragEvent): void {
     try {
       const material = JSON.parse(raw);
       const fieldKey = `field_${Date.now()}`;
-      const fieldSchema: Record<string, unknown> = {
+      const fieldSchema: FieldSchema = {
+        type: 'string',
         ...(material.defaultSchema ?? {}),
         title: material.label ?? material.name,
         'x-id': designerEngine.generateNodeId(),

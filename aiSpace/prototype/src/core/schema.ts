@@ -469,4 +469,6 @@ export interface PageSchema {
     updatedAt: string
     createdBy?: string
   }
+  /** 页面级布局模式：relative=流式布局，absolute=自由布局 */
+  'x-position-type'?: 'relative' | 'absolute'
 }
