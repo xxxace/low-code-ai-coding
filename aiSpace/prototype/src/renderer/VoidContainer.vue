@@ -137,7 +137,7 @@ import {
   type CSSProperties,
 } from "vue";
 // element-plus 组件由模板直接使用（Auto Import），此处无需显式 import
-import type { VoidFieldSchema, FieldSchema } from "../types/schema";
+import type { VoidFieldSchema, FieldSchema } from "../core/schema";
 import type { FormModel } from "../core/model";
 import { injectDesignMode, injectSelectedNodeId, injectDesignerEngine } from "../core/injectionKeys";
 import XLayout from "./XLayout.vue";
@@ -239,7 +239,7 @@ const componentProps = computed(() => props.schema["x-component-props"] ?? {});
  */
 function syncContainerSize(): void {
   // 守卫1：非设计模式 或 非 absolute 模式时跳过（ResizeObserver 异步回调时条件可能已变）
-  if (!designMode || !isAbsoluteMode.value) return;
+  if (!designMode.value || !isAbsoluteMode.value) return;
   if (!voidWrapperRef.value || !designerEngine) return;
   const nodeId = props.schema["x-id"];
   if (!nodeId) return;
@@ -264,7 +264,7 @@ const resizeTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const resizeObserver = ref<ResizeObserver | null>(null)
 
 onMounted(async () => {
-  if (!designMode || !isAbsoluteMode.value) return;
+  if (!designMode.value || !isAbsoluteMode.value) return;
   await nextTick();
   // 首次精准同步（同 FieldRenderer 模式）
   syncContainerSize();

@@ -6,7 +6,7 @@
  * 避免 string key 导致的类型丢失问题。
  */
 
-import { inject, computed, type ComputedRef } from 'vue'
+import { inject, computed, type ComputedRef, type InjectionKey } from 'vue'
 import type { DesignerEngine } from '../designer/engine/designerEngine'
 
 // ============================================================
@@ -19,7 +19,7 @@ import type { DesignerEngine } from '../designer/engine/designerEngine'
  * provide 值类型：DesignerEngine（useDesignerEngine 返回值）
  * inject 返回：DesignerEngine | null
  */
-export const DESIGNER_ENGINE_KEY: import('vue').InjectionKey<DesignerEngine> =
+export const DESIGNER_ENGINE_KEY: InjectionKey<DesignerEngine> =
   Symbol('designerEngine')
 
 /**
@@ -40,7 +40,7 @@ export function injectDesignerEngine(defaultValue: DesignerEngine | null = null)
  * provide 值类型：ComputedRef<boolean>
  * inject 返回：ComputedRef<boolean>（Vue 模板中自动解包为 boolean）
  */
-export const DESIGN_MODE_KEY: import('vue').InjectionKey<ComputedRef<boolean>> =
+export const DESIGN_MODE_KEY: InjectionKey<ComputedRef<boolean>> =
   Symbol('designMode')
 
 /**
@@ -64,7 +64,7 @@ export function injectDesignMode(defaultValue = false): ComputedRef<boolean> {
  * provide 值类型：ComputedRef<string | null>
  * inject 返回：ComputedRef<string | null>
  */
-export const SELECTED_NODE_ID_KEY: import('vue').InjectionKey<ComputedRef<string | null>> =
+export const SELECTED_NODE_ID_KEY: InjectionKey<ComputedRef<string | null>> =
   Symbol('selectedNodeId')
 
 /**
@@ -76,3 +76,23 @@ export function injectSelectedNodeId(defaultValue: string | null = null): Comput
   if (injected) return injected
   return computed(() => defaultValue)
 }
+
+// ============================================================
+// FormRenderer 上下文（替代字符串 key 'formRenderer'）
+// ============================================================
+
+/**
+ * FormRenderer 提供给 FieldRenderer 的上下文接口
+ */
+export interface FormRendererContext {
+  onFieldChange: (path: string, value: any) => void
+}
+
+/**
+ * formRendererContext 注入 key（类型安全，替代字符串 'formRenderer'）
+ *
+ * provide 值类型：FormRendererContext
+ * inject 返回：FormRendererContext | null
+ */
+export const FORM_RENDERER_KEY: InjectionKey<FormRendererContext> =
+  Symbol('formRenderer')

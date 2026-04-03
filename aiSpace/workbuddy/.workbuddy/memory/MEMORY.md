@@ -38,37 +38,39 @@
 | 历史记录 | JSON 快照模式（snapshots[] + index） |
 | 包结构 | 3 包（core/renderer/designer），StdForm 适配层已移除 |
 
-## 当前进度（截至 2026-03-30）
+## 当前进度（截至 2026-03-30 晚）
 
 **第十六阶段 XLayout 架构演进**：Step 0~5 全部完成 ✅
+**全量代码质检修复**（25 项问题，4 Batch）：全部完成 ✅
 
-最新 commit：`25f76da` - 修复 absolute 容器节点 overlay 高度不同步问题
+最新状态：
+- vue-tsc --noEmit 零错误 ✅
+- vitest run 149/149 全通过 ✅
+- FlowLayout.vue 已删除（由 XLayout 完全替代）
+- types/ 垫片层内部引用已全部迁移到直接 core/
 
-commit 时间线：`e3ab15d` → `8b05669` → `2c96f0c` → `78eec2a` → `1a2aa9d` → `9480014` → `232b0aa` → `7aec6f3` → `63bb1f0` → `25f76da`
-
-核心已完成能力：
-- core/ 全模块（schema/model/reactions/registry）
-- renderer/（FieldRenderer/FlowLayout/VoidContainer/XLayout）
-- designer/ 全 UI 组件 + engine + composables
-- 容器组件（Card/Tabs/Collapse/Divider）物料注册 + 设计器交互
-- 跨容器拖拽（moveNodeAcrossContainers 原子操作）
-- 预览、导出 Schema、导入 Schema（含校验+确认）
-- XLayout 统一渲染器 + AbsoluteNodeOverlay（拖拽/缩放）
-- Flow/Free 双层交互：DesignOverlay（流式）+ AbsoluteNodeOverlay（绝对）
-- VoidContainer 高度自适应（ResizeObserver）
-- 代码质检 4 Batch（18 个问题）+ vue-tsc 13 错误全修复
-- 单元测试：当前基线 149 个（Step 5 迁移后），TypeScript 零错误
-
-**2026-03-30 类型错误修复**：
-- `PageSchema` 接口添加 `'x-position-type'` 属性（修复 DesignOverlay.vue 和 LowcodeDesigner.vue 的类型错误）
-- `FormRenderer.vue` 将 `provide(SELECTED_NODE_ID_KEY, ref(null))` 改为 `computed(() => null)` 以匹配 `ComputedRef<string | null>` 类型
-- `VoidContainer.vue` 将 `fieldSchema` 类型从 `Record<string, unknown>` 改为 `FieldSchema` 并添加必需的 `type` 字段
-- 类型检查：`vue-tsc --noEmit` 零错误 ✅
-- 单元测试：149 个全部通过 ✅
+质检修复内容摘要：
+- B-02/B-03：designMode.value 缺少 .value 的 Bug 修复（FieldRenderer/VoidContainer）
+- B-09：FieldProperties emitUpdate 的 falsy 过滤 Bug 修复
+- A-01：FORM_RENDERER_KEY InjectionKey 替换字符串 'formRenderer'
+- A-03：findSourceNode 共享函数提取（schemaUtils.ts）
+- R-03/B-04：LowcodeDesigner handleFieldPropsUpdate 委托 engine.updateNodeProps()
+- D-01/D-08/R-01：FlowLayout.vue 删除
+- D-04：移除 isDragging/dragNodeId 未使用 ref
+- R-02/B-10：HistoryManager 重复导出删除 + void hack 修复
+- D-05/R-07/B-11：AllFieldTypes 删除 / ContainerNode @deprecated / I18nConfig 注释
+- D-06：model.ts 空 if 块删除
+- D-07：getGlobalRegistry/setGlobalRegistry 全局单例删除
+- R-04/R-05：formModelForTemplate 和 cssVariables 空函数删除
+- B-01：20+ 处 types/ 路径迁移到 core/
+- B-05/B-06：DesignOverlay 死分支简化 + 定时器 ref 统一
+- B-07：FieldRenderer widgetStyle 计算属性统一两套 widget style
+- B-08：reactions.ts buildSandboxFn 提取消除重复
+- R-06：DesignOverlay 未使用 emit 类型删除
 
 ## 待实现功能（优先级排序）
 
-1. Step 4：批量切换工具栏 + PositionTypeSetter 属性面板（高优，下一步）
+1. PositionTypeSetter 属性面板 + 批量切换工具栏（高优）
 2. x-relation 关系字段 UI（中）
 3. 其他低优先级项见 FEATURE_CHECKLIST.md
 

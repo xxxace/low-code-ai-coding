@@ -207,7 +207,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import type { Reaction } from '../types/schema'
+import type { Reaction } from '../core/schema'
 
 // ============================================================
 // Props & Emits

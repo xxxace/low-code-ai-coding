@@ -124,7 +124,7 @@ import {
   type CSSProperties,
 } from 'vue'
 import { ArrowUp, ArrowDown, Delete, CopyDocument } from '@element-plus/icons-vue'
-import type { PageSchema, FieldSchema } from '../types/schema'
+import type { PageSchema, FieldSchema } from '../core/schema'
 
 // ============================================================
 // Props & Emits
@@ -149,8 +149,6 @@ const emit = defineEmits<{
   (e: 'reorder-nodes', fromId: string, toId: string, position: 'before' | 'after'): void
   (e: 'move-to-container', nodeId: string, containerId: string): void
   (e: 'move-across-containers', nodeId: string, targetId: string, position: 'before' | 'after'): void
-  (e: 'update-node-position', nodeId: string, updates: { x: number; y: number }): void
-  (e: 'update-node-size', nodeId: string, updates: { width: number; height: number }): void
 }>()
 
 
@@ -195,18 +193,12 @@ function getActionsStyle(item: OverlayItem): CSSProperties {
   const rightEdge = itemLeft + itemW
   let horizontalStyle: CSSProperties
 
-  if (itemLeft < 0) {
-    horizontalStyle = { left: '0', right: 'auto' }
-  } else if (rightEdge < DESIGN_CONSTANTS.ACTIONS_W) {
+  if (itemLeft < 0 || rightEdge < DESIGN_CONSTANTS.ACTIONS_W) {
     horizontalStyle = { left: '0', right: 'auto' }
   } else if (canvasW > 0 && rightEdge > canvasW) {
     horizontalStyle = { right: '0', left: 'auto' }
   } else {
-    if (rightEdge - DESIGN_CONSTANTS.ACTIONS_W < 0) {
-      horizontalStyle = { left: '0', right: 'auto' }
-    } else {
-      horizontalStyle = { right: '0', left: 'auto' }
-    }
+    horizontalStyle = { right: '0', left: 'auto' }
   }
 
   return {
@@ -281,13 +273,11 @@ const flatNodes = computed<FlatNode[]>(() => {
 // 核心：DOM 坐标计算 + 防抖
 // ============================================================
 
-let refreshTimerId: ReturnType<typeof setTimeout> | null = null
-
 /** 防抖刷新：MutationObserver / ResizeObserver 高频回调时，合并到单帧 */
 function debouncedRefreshOverlay(): void {
-  if (refreshTimerId) clearTimeout(refreshTimerId)
-  refreshTimerId = setTimeout(() => {
-    refreshTimerId = null
+  if (refreshTimerRef.value) clearTimeout(refreshTimerRef.value)
+  refreshTimerRef.value = setTimeout(() => {
+    refreshTimerRef.value = null
     refreshOverlay()
   }, 16) // ~60fps，与 RAF 对齐
 }
@@ -359,6 +349,7 @@ const resizeObserverRef = ref<ResizeObserver | null>(null)
 // 定时器引用（用于清理 setTimeout）
 const mountedTimerRef = ref<ReturnType<typeof setTimeout> | null>(null)
 const schemaWatchTimerRef = ref<ReturnType<typeof setTimeout> | null>(null)
+const refreshTimerRef = ref<ReturnType<typeof setTimeout> | null>(null)
 
 function setupObservers(): void {
   if (!props.canvasEl) return
@@ -428,9 +419,9 @@ onUnmounted(() => {
     clearTimeout(schemaWatchTimerRef.value)
     schemaWatchTimerRef.value = null
   }
-  if (refreshTimerId) {
-    clearTimeout(refreshTimerId)
-    refreshTimerId = null
+  if (refreshTimerRef.value) {
+    clearTimeout(refreshTimerRef.value)
+    refreshTimerRef.value = null
   }
 })
 

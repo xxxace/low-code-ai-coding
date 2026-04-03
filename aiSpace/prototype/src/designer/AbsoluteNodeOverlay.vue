@@ -107,7 +107,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import { CopyDocument, Delete } from '@element-plus/icons-vue'
-import type { PageSchema, FieldSchema } from '../types/schema'
+import type { PageSchema, FieldSchema } from '../core/schema'
 
 // ============================================================
 // Props & Emits

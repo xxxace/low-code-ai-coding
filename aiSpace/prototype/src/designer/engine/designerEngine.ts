@@ -36,8 +36,6 @@ import { designerBus } from './designerBus'
 export function useDesignerEngine() {
   const schema = ref<PageSchema | null>(null)
   const selectedNodeId = ref<string | null>(null)
-  const isDragging = ref(false)
-  const dragNodeId = ref<string | null>(null)
   const history = new HistoryManager()
 
   // ============================================================
@@ -100,11 +98,11 @@ export function useDesignerEngine() {
 
   // canUndo/canRedo 依赖响应式 indexRef，确保按钮状态实时更新
   const canUndo = computed(() => {
-    void history.indexRef.value
+    history.indexRef.value
     return history.canUndo
   })
   const canRedo = computed(() => {
-    void history.indexRef.value
+    history.indexRef.value
     return history.canRedo
   })
 
@@ -392,8 +390,6 @@ const handleSubmit = (values: Record<string, any>) => {
     schema,
     selectedNodeId,
     selectedNodeSchema,
-    isDragging,
-    dragNodeId,
     canUndo,
     canRedo,
 
@@ -422,6 +418,3 @@ const handleSubmit = (values: Record<string, any>) => {
 }
 
 export type DesignerEngine = ReturnType<typeof useDesignerEngine>
-
-// 重新导出 HistoryManager 供有需要的组件直接使用
-export { HistoryManager } from './HistoryManager'

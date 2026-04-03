@@ -297,25 +297,7 @@ function handleFieldPropsUpdate(
   nodeId: string,
   updates: Partial<FieldSchema>,
 ): void {
-  if (!engine.schema.value) return;
-  const newSchema = JSON.parse(JSON.stringify(engine.schema.value));
-
-  function findAndUpdate(properties: Record<string, FieldSchema>): boolean {
-    for (const [key, schema] of Object.entries(properties)) {
-      if (schema["x-id"] === nodeId) {
-        Object.assign(properties[key], updates);
-        return true;
-      }
-      if ("properties" in schema && schema.properties) {
-        if (findAndUpdate(schema.properties)) return true;
-      }
-    }
-    return false;
-  }
-
-  findAndUpdate(newSchema.schema.properties);
-  engine.schema.value = newSchema;
-  engine.saveSnapshot();
+  engine.updateNodeProps(nodeId, updates);
 }
 
 function handleUpdateNodePosition(

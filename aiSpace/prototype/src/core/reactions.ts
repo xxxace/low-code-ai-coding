@@ -88,20 +88,27 @@ interface SandboxContext {
 }
 
 /**
+ * 构造沙箱函数（内部共享）
+ * 将受限全局变量屏蔽，将上下文变量注入为函数参数
+ */
+function buildSandboxFn(body: string, context: SandboxContext): (...args: any[]) => any {
+  const contextKeys = Object.keys(context)
+  const contextValues = contextKeys.map((k) => context[k])
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(
+    ...SANDBOX_BLOCKED_GLOBALS,
+    ...contextKeys,
+    body
+  )
+  return () => fn(...new Array(SANDBOX_BLOCKED_GLOBALS.length).fill(undefined), ...contextValues)
+}
+
+/**
  * 安全求值表达式（有返回值）
  */
 function evalExpression(expression: string, context: SandboxContext): any {
   try {
-    const contextKeys = Object.keys(context)
-    const contextValues = contextKeys.map((k) => context[k])
-
-    // eslint-disable-next-line no-new-func
-    const fn = new Function(
-      ...SANDBOX_BLOCKED_GLOBALS,
-      ...contextKeys,
-      `"use strict"; return (${expression})`
-    )
-    return fn(...new Array(SANDBOX_BLOCKED_GLOBALS.length).fill(undefined), ...contextValues)
+    return buildSandboxFn(`"use strict"; return (${expression})`, context)()
   } catch (e) {
     console.error(`[ReactionsEngine] 表达式求值失败: "${expression}"`, e)
     return undefined
@@ -113,16 +120,7 @@ function evalExpression(expression: string, context: SandboxContext): any {
  */
 function execExpression(expression: string, context: SandboxContext): void {
   try {
-    const contextKeys = Object.keys(context)
-    const contextValues = contextKeys.map((k) => context[k])
-
-    // eslint-disable-next-line no-new-func
-    const fn = new Function(
-      ...SANDBOX_BLOCKED_GLOBALS,
-      ...contextKeys,
-      `"use strict"; ${expression}`
-    )
-    fn(...new Array(SANDBOX_BLOCKED_GLOBALS.length).fill(undefined), ...contextValues)
+    buildSandboxFn(`"use strict"; ${expression}`, context)()
   } catch (e) {
     console.error(`[ReactionsEngine] 副作用执行失败: "${expression}"`, e)
   }

@@ -4,7 +4,7 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './types/componentRegistry'
+import { createDefaultRegistry, COMPONENT_REGISTRY_KEY } from './core/registry'
 
 const app = createApp(App)
 

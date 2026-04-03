@@ -7,7 +7,6 @@
   <div
     class="lowcode-renderer"
     :class="`lowcode-renderer--${formConfig.layoutType ?? 'PC'}`.toLowerCase()"
-    :style="cssVariables"
   >
     <el-form
       v-if="formModel"
@@ -34,11 +33,11 @@
 
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue'
-import type { PageSchema } from '../types/schema'
-import { createFormModel, type FormModel } from '../types/model'
-import { createReactionsEngine, type ReactionsEngine } from '../types/reactions'
-import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../types/componentRegistry'
-import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY } from '../core/injectionKeys'
+import type { PageSchema } from '../core/schema'
+import { createFormModel, type FormModel } from '../core/model'
+import { createReactionsEngine, type ReactionsEngine } from '../core/reactions'
+import { useComponentRegistry, COMPONENT_REGISTRY_KEY } from '../core/registry'
+import { DESIGN_MODE_KEY, SELECTED_NODE_ID_KEY, FORM_RENDERER_KEY } from '../core/injectionKeys'
 import XLayout from './XLayout.vue'
 
 // ============================================================
@@ -82,17 +81,11 @@ const elFormRef = ref()
 const formModel = ref<FormModel | null>(null)
 let reactionsEngine: ReactionsEngine | null = null
 
-// 模板中传递 ref 给子组件 prop 时，vue-tsc 推断为 UnwrapRef<FormModel | null>
-// 提供一个计算属性作为类型"锚点"，让模板传递时类型匹配
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const formModelForTemplate = computed<FormModel | null>(() => formModel.value as FormModel | null)
-
 const formConfig = computed(() => props.schema.formConfig)
 
-const cssVariables = computed(() => {
-  return {}
-  // 可在这里注入 CSS 变量，如 --lowcode-label-width
-})
+// vue-tsc 对 ref<FormModel | null> 解包后为 UnwrapRef<FormModel | null>，
+// 与 FormModel 接口不完全匹配（私有方法丢失），用 computed + as 作为类型锚点
+const formModelForTemplate = computed<FormModel | null>(() => formModel.value as FormModel | null)
 
 // ============================================================
 // 初始化
@@ -192,7 +185,7 @@ defineExpose({ validate, submit, reset, getValues, setFieldValue })
 // ============================================================
 
 provide('formModel', formModel)
-provide('formRenderer', {
+provide(FORM_RENDERER_KEY, {
   onFieldChange: (path: string, value: any) => {
     emit('change', path, value)
     execLifeCycleHook('onFormDataChange')

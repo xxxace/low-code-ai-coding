@@ -68,8 +68,6 @@ export { ReactionsEngine, createReactionsEngine } from './core/reactions'
 export {
   ComponentRegistry,
   createDefaultRegistry,
-  getGlobalRegistry,
-  setGlobalRegistry,
   useComponentRegistry,
   COMPONENT_REGISTRY_KEY,
 } from './core/registry'
@@ -87,7 +85,6 @@ export type {
 
 // ── 渲染器（Vue 组件） ────────────────────────────────────────────────────
 export { default as FormRenderer } from './renderer/FormRenderer.vue'
-export { default as FlowLayout } from './renderer/FlowLayout.vue'
 export { default as FieldRenderer } from './renderer/FieldRenderer.vue'
 export { default as VoidContainer } from './renderer/VoidContainer.vue'
 

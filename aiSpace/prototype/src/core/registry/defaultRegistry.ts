@@ -634,20 +634,3 @@ export function createDefaultRegistry(): ComponentRegistry {
 
   return registry
 }
-
-// ============================================================
-// 全局单例（可选，多数场景使用 provide/inject 即可）
-// ============================================================
-
-let _globalRegistry: ComponentRegistry | null = null
-
-export function getGlobalRegistry(): ComponentRegistry {
-  if (!_globalRegistry) {
-    _globalRegistry = createDefaultRegistry()
-  }
-  return _globalRegistry
-}
-
-export function setGlobalRegistry(registry: ComponentRegistry): void {
-  _globalRegistry = registry
-}

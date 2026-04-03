@@ -321,12 +321,12 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed, watch, inject, toRaw } from "vue";
-import type { FieldSchema, Reaction } from "../types/schema";
+import type { FieldSchema, Reaction } from "../core/schema";
 import {
   COMPONENT_REGISTRY_KEY,
   type ComponentRegistry,
   type PropSetterGroup,
-} from "../types/componentRegistry";
+} from "../core/registry";
 import PropGroup from "./PropGroup.vue";
 import OptionsEditor from "./OptionsEditor.vue";
 import ReactionEditorDialog from "./ReactionEditorDialog.vue";
@@ -532,9 +532,7 @@ function emitUpdate() {
   const mergedComponentProps: Record<string, any> = {};
   for (const [k, v] of Object.entries(componentPropsForm)) {
     if (k === "__options__") continue;
-    if (v !== null && v !== undefined && v !== "") {
-      mergedComponentProps[k] = v;
-    }
+    mergedComponentProps[k] = v;
   }
   // 保留 placeholder 来源：优先 componentPropsForm.placeholder，其次 form.placeholder
   if (form.placeholder) mergedComponentProps.placeholder = form.placeholder;

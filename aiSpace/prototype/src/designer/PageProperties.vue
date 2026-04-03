@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from "vue";
-import type { PageSchema } from "../types/schema";
+import type { PageSchema } from "../core/schema";
 
 interface Props {
   schema: PageSchema;

@@ -21,7 +21,6 @@ import type {
   DisplayState,
   Validator,
   ObjectFieldSchema,
-  ArrayFieldSchema,
 } from './schema'
 
 // ============================================================
@@ -152,14 +151,6 @@ export class FormModel {
 
       if (fieldSchema.type === 'object' && (fieldSchema as ObjectFieldSchema).properties) {
         this._initFromSchema((fieldSchema as ObjectFieldSchema).properties, path, address)
-      }
-
-      if (
-        fieldSchema.type === 'array' &&
-        (fieldSchema as ArrayFieldSchema).items &&
-        !Array.isArray((fieldSchema as ArrayFieldSchema).items)
-      ) {
-        // array 中的子 schema 仅用于渲染，不在此初始化独立字段
       }
     }
   }

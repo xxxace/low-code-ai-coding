@@ -59,6 +59,13 @@ export function resolveLocalizedString(val: LocalizedString, locale = 'zh'): str
 // i18n 配置（字段级 i18n key 映射）
 // ============================================================
 
+/**
+ * 字段级 i18n key 映射配置
+ *
+ * 当前版本：字段已预留，渲染器暂未实现 i18n key 解析逻辑。
+ * 如需多语言支持，请直接使用 LocalizedString（I18nString 对象）
+ * 为 title / description 等字段赋值。
+ */
 export interface I18nConfig {
   /** 标签文本的 i18n key（覆盖 title） */
   title?: string
@@ -363,18 +370,17 @@ export type FieldSchema =
   | ArrayFieldSchema
   | VoidFieldSchema
 
-/** 所有合法的字段 type 值（用于 UI 下拉等场景） */
-export type AllFieldTypes = FieldSchema['type'] | 'void'
-
 // ============================================================
-// 容器节点（预留扩展，TODO: GroupRenderer.vue 待实现）
+// 容器节点（已废弃，由 VoidFieldSchema 替代）
 // ============================================================
 
 /**
  * 容器节点类型
  * 支持将字段分组（Group / Tab / Collapse 等），实现无限嵌套布局
  *
- * 当前版本：类型已定义，FieldRenderer 已加占位分支，GroupRenderer 待后续实现
+ * @deprecated 请使用 VoidFieldSchema（type: 'void'）替代。
+ * ContainerNode 的设计已被 VoidFieldSchema + x-component 模式取代，
+ * 此类型仅保留以避免破坏可能的外部引用，未来版本将移除。
  */
 export type ContainerVariant = 'group' | 'tab' | 'collapse' | 'card'
 

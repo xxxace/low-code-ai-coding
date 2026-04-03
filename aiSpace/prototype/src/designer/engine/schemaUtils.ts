@@ -276,6 +276,26 @@ export function moveNodeById(
 // ============================================================
 
 /**
+ * 查找节点在树中的位置（内部共享工具函数）
+ * @returns 节点对象、其 key、以及父 properties，未找到返回 null
+ */
+function findSourceNode(
+  props: Record<string, FieldSchema>,
+  nodeId: string
+): { node: FieldSchema; key: string; parentProps: Record<string, FieldSchema> } | null {
+  for (const [key, fieldSchema] of Object.entries(props)) {
+    if (fieldSchema['x-id'] === nodeId) {
+      return { node: fieldSchema, key, parentProps: props }
+    }
+    if ('properties' in fieldSchema && fieldSchema.properties) {
+      const found = findSourceNode(fieldSchema.properties as Record<string, FieldSchema>, nodeId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/**
  * 将节点从原 parent 移动到目标容器内
  *
  * @param rootSchema   根 Schema 节点（会在深拷贝上操作，调用方负责深拷贝）
@@ -298,30 +318,13 @@ export function moveNodeToContainer(
   // 不能移动到自身
   if (nodeId === containerId) return false
 
-  // --- 第一遍：找到源节点 + 其父 properties + 原始 key ---
-  let sourceNode: FieldSchema | null = null
-  let sourceKey: string | null = null
-  let sourceParentProps: Record<string, FieldSchema> | null = null
-
-  function findSource(properties: Record<string, FieldSchema>): boolean {
-    for (const [key, fieldSchema] of Object.entries(properties)) {
-      if (fieldSchema['x-id'] === nodeId) {
-        sourceNode = fieldSchema
-        sourceKey = key
-        sourceParentProps = properties
-        return true
-      }
-      if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (findSource(fieldSchema.properties as Record<string, FieldSchema>)) return true
-      }
-    }
-    return false
-  }
-
   const rootProps = 'properties' in rootSchema ? rootSchema.properties : null
   if (!rootProps) return false
-  if (!findSource(rootProps)) return false
-  if (!sourceNode || !sourceKey || !sourceParentProps) return false
+
+  // --- 第一遍：找到源节点 + 其父 properties + 原始 key（复用 findSourceNode）---
+  const sourceResult = findSourceNode(rootProps, nodeId)
+  if (!sourceResult) return false
+  const { node: sourceNode, key: sourceKey, parentProps: sourceParentProps } = sourceResult
 
   // --- 第二遍：找到目标容器节点 ---
   function findContainer(properties: Record<string, FieldSchema>): FieldSchema | null {
@@ -356,7 +359,7 @@ export function moveNodeToContainer(
   ;(sourceNode as any)['x-order'] = maxOrder + 10
 
   // 3. 处理 key 冲突：目标容器内已有同名 key 则追加后缀
-  let newKey: string = sourceKey as string
+  let newKey: string = sourceKey
   if (newKey in targetProps) {
     newKey = `${sourceKey}_${Date.now()}`
   }
@@ -440,27 +443,9 @@ export function moveNodeAcrossContainers(
   if (!rootProps) return false
 
   // --- 第一步：找到源节点及其父 properties ---
-  let sourceNode: FieldSchema | null = null
-  let sourceKey: string | null = null
-  let sourceParentProps: Record<string, FieldSchema> | null = null
-
-  function findSource(props: Record<string, FieldSchema>): boolean {
-    for (const [key, fieldSchema] of Object.entries(props)) {
-      if (fieldSchema['x-id'] === nodeId) {
-        sourceNode = fieldSchema
-        sourceKey = key
-        sourceParentProps = props
-        return true
-      }
-      if ('properties' in fieldSchema && fieldSchema.properties) {
-        if (findSource(fieldSchema.properties as Record<string, FieldSchema>)) return true
-      }
-    }
-    return false
-  }
-
-  if (!findSource(rootProps)) return false
-  if (!sourceNode || !sourceKey || !sourceParentProps) return false
+  const sourceResult = findSourceNode(rootProps, nodeId)
+  if (!sourceResult) return false
+  const { node: sourceNode, key: sourceKey, parentProps: sourceParentProps } = sourceResult
 
   // --- 第二步：找到目标节点及其父 properties ---
   let targetParentProps: Record<string, FieldSchema> | null = null
@@ -479,18 +464,19 @@ export function moveNodeAcrossContainers(
   }
 
   if (!findTargetParent(rootProps)) return false
-  if (!targetParentProps) return false
+  // TypeScript 无法感知闭包内对外部 let 的赋值，需要两步断言
+  const resolvedTargetParentProps = targetParentProps as unknown as Record<string, FieldSchema>
 
   // --- 第三步：从原 parent 摘除 ---
   delete sourceParentProps[sourceKey]
 
   // --- 第四步：插入目标 parent，处理 key 冲突 ---
-  let newKey: string = sourceKey as string
-  if (newKey in targetParentProps) {
+  let newKey: string = sourceKey
+  if (newKey in resolvedTargetParentProps) {
     newKey = `${sourceKey}_${Date.now()}`
   }
 
-  targetParentProps[newKey] = sourceNode
+  resolvedTargetParentProps[newKey] = sourceNode
 
   // --- 第五步：在目标 parent 内排序 ---
   return sortNodesInSchema(rootSchema, nodeId, targetId, position)

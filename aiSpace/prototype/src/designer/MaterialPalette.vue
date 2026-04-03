@@ -53,8 +53,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { useComponentRegistry, type WidgetMeta } from '../types/componentRegistry'
-import type { FieldSchema } from '../types/schema'
+import { useComponentRegistry, type WidgetMeta } from '../core/registry'
+import type { FieldSchema } from '../core/schema'
 
 // ============================================================
 // 物料定义
