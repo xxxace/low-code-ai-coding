@@ -12,12 +12,27 @@
 为某 MES（制造执行系统）项目开发 Vue 3 低代码设计器，命名 StdForm 低代码扩展。
 技术栈：Vue 3 + TypeScript + Element Plus + Pinia。
 
-## 重要文件索引
+## 设计文档结构
 
-- 功能进度清单：`D:\demo\ai\aiSpace\FEATURE_CHECKLIST.md`
-- 编码规范：`D:\demo\ai\aiSpace\编码风格总结.md`
-- 设计文档：`D:\demo\ai\aiSpace\design\`
-- 任务文件：`D:\demo\ai\aiSpace\NEXT_PROMPT.md`
+```
+design\
+├── ARCHITECTURE.md        ← 当前架构（维护）
+├── FEATURE_CHECKLIST.md   ← 功能进度清单（维护）
+└── archive\               ← 归档文档（不主动读，仅在用户明确要求时参考）
+    ├── dev-progress-2026-03-26.md
+    ├── code-review-issues-2026-03-26.md
+    ├── Schema-Migration-Plan.md
+    └── FreeLayout-Interaction-Plan.md
+```
+
+**归档目录规则（重要）：**
+- `design\archive\` 下的文档**不主动读取**，不在正常推理流程中引用
+- 仅当用户明确要求"查看历史文档"时才访问
+- 每个归档文件头部有免责声明，明确说明内容已过时
+- 归档文件含内容摘要，保留历史参考价值
+
+- 功能进度清单：`d:\ai\low-code-ai-coding\aiSpace\FEATURE_CHECKLIST.md`
+- 编码规范：`d:\ai\low-code-ai-coding\aiSpace\summary\编码风格总结.md`
 - 开发服务器：`http://localhost:5173`（在 prototype/ 目录运行 `npx vite`）
 - 运行测试：`cd prototype && npx vitest run`
 
@@ -38,10 +53,12 @@
 | 历史记录 | JSON 快照模式（snapshots[] + index） |
 | 包结构 | 3 包（core/renderer/designer），StdForm 适配层已移除 |
 
-## 当前进度（截至 2026-03-30 晚）
+## 当前进度（截至 2026-04-04）
 
 **第十六阶段 XLayout 架构演进**：Step 0~5 全部完成 ✅
 **全量代码质检修复**（25 项问题，4 Batch）：全部完成 ✅
+**跨类型拖拽**：流式节点拖入 absolute 容器 ✅（已实现，含 hover 绿框高亮 + 插入容器末尾）
+**文档大扫除**（2026-04-04）：FEATURE_CHECKLIST、ARCHITECTURE 已更新；4 个过时文档已归档
 
 最新状态：
 - vue-tsc --noEmit 零错误 ✅
@@ -70,7 +87,7 @@
 
 ## 待实现功能（优先级排序）
 
-1. PositionTypeSetter 属性面板 + 批量切换工具栏（高优）
+1. PositionTypeSetter 属性面板（字段定位类型切换 relative↔absolute）+ 批量切换工具栏（高优）
 2. x-relation 关系字段 UI（中）
 3. 其他低优先级项见 FEATURE_CHECKLIST.md
 
