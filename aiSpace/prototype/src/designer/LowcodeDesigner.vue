@@ -111,46 +111,32 @@
           </div>
         </div>
 
-        <!-- 两个 overlay 都放在 canvas-container 外层，避免被滚动容器裁切 -->
-        <!-- Absolute 节点交互层（处理自由布局节点的拖拽缩放） -->
-        <AbsoluteNodeOverlay
+        <!-- CanvasOverlay（单例 overlay，整合 hover/选中/drag/resize/sort/DnD） -->
+        <CanvasOverlay
           v-if="currentSchema"
           :schema="currentSchema"
           :selected-node-id="engine.selectedNodeId.value"
           :canvas-el="canvasRef"
+          :interaction-mode="interactionMode"
           @select-node="engine.selectNode"
           @remove-node="handleRemoveNode"
           @duplicate-node="handleDuplicateNode"
           @update-node-position="handleUpdateNodePosition"
           @update-node-size="handleUpdateNodeSize"
-          @move-to-container="handleMoveToContainer"
-          @save-snapshot="engine.saveNodePositionSnapshot"
-          @reorder-nodes="handleReorderNodes"
-        />
-
-        <!-- 流式布局交互层（处理 hover 高亮、点击选中、拖拽排序、上下移动） -->
-        <DesignOverlay
-          v-if="currentSchema"
-          :schema="currentSchema"
-          :selected-node-id="engine.selectedNodeId.value"
-          :canvas-el="canvasRef"
-          :design-mode="true"
-          @select-node="engine.selectNode"
-          @remove-node="handleRemoveNode"
-          @duplicate-node="handleDuplicateNode"
-          @move-node="handleMoveNode"
-          @reorder-nodes="handleReorderNodes"
-          @move-to-container="handleMoveToContainer"
-          @move-across-containers="handleMoveAcrossContainers"
-          @drop-indicator-change="handleDropIndicatorChange"
-        />
-
-        <!-- 拖拽排序指示线（独立顶层，确保在所有 overlay 之上显示） -->
-        <div
-          v-if="dropIndicatorRef"
-          class="designer-drop-indicator"
-          :style="dropIndicatorRef.style"
-        />
+          @sort-nodes="handleReorderNodes"
+          @move-node-to-container="handleMoveToContainer"
+          @drag-start="handleDragStart"
+          @drag-end="handleDragEnd"
+          @drop-complete="handleDropComplete"
+        >
+          <!-- 图标插槽 -->
+          <template #duplicate-icon>
+            <el-icon><DocumentCopy /></el-icon>
+          </template>
+          <template #delete-icon>
+            <el-icon><Delete /></el-icon>
+          </template>
+        </CanvasOverlay>
       </div>
 
       <!-- 右侧属性面板 -->
@@ -208,7 +194,7 @@
 <script setup lang="ts">
 import { ref, computed, provide, type CSSProperties } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { RefreshLeft, RefreshRight, Plus } from "@element-plus/icons-vue";
+import { RefreshLeft, RefreshRight, Plus, DocumentCopy, Delete } from "@element-plus/icons-vue";
 import type { PageSchema, FieldSchema } from "../core/schema";
 import { useDesignerEngine } from "./engine/designerEngine";
 import { useMaterialDrag } from "./composables/useMaterialDrag";
@@ -217,8 +203,7 @@ import FormRenderer from "../renderer/FormRenderer.vue";
 import MaterialPalette from "./MaterialPalette.vue";
 import PageProperties from "./PageProperties.vue";
 import FieldProperties from "./FieldProperties.vue";
-import AbsoluteNodeOverlay from "./AbsoluteNodeOverlay.vue";
-import DesignOverlay from "./DesignOverlay.vue";
+import CanvasOverlay from "./CanvasOverlay.vue";
 import {
   createDefaultRegistry,
   COMPONENT_REGISTRY_KEY,
@@ -265,13 +250,8 @@ const showPreview = ref(false);
 const showCodeDialog = ref(false);
 const importFileInputRef = ref<HTMLInputElement | null>(null);
 
-// 拖拽排序指示线状态（通过 emit 事件从 DesignOverlay 同步）
-// 注意：不能用 computed + template ref，因为 defineExpose 暴露的 ref 是静态解包的，不是响应式的
-const dropIndicatorRef = ref<{ style: CSSProperties } | null>(null);
-
-function handleDropIndicatorChange(indicator: { style: CSSProperties } | null): void {
-  dropIndicatorRef.value = indicator
-}
+// 交互模式（由 CanvasOverlay 管理，LowcodeDesigner 只读）
+const interactionMode = ref<'idle' | 'mouse-drag' | 'html5-dnd'>('idle')
 
 const currentSchema = computed(() => engine.schema.value);
 
@@ -364,6 +344,37 @@ function handleMoveAcrossContainers(
   position: 'before' | 'after'
 ): void {
   engine.moveNodeAcrossContainers(nodeId, targetId, position);
+}
+
+function handleDragStart(mode: 'mouse-drag' | 'html5-dnd'): void {
+  interactionMode.value = mode
+}
+
+function handleDragEnd(): void {
+  interactionMode.value = 'idle'
+}
+
+function handleDropComplete(target: any): void {
+  // CanvasOverlay 已通过 emit('drop-complete', target) 传递
+  // 这里处理具体的 drop 逻辑
+  if (!target) return
+
+  // TODO: DropTarget 接口中缺少源节点 ID 字段，暂时无法执行排序/移动操作
+  // 需要在 useDragInteraction.ts 的 DropTarget 接口中添加 sourceId 字段
+  switch (target.action) {
+    case 'sort-relative':
+      // engine.sortNodes(sourceId, target.beforeNodeId, target.position)
+      console.warn('[LowcodeDesigner] sort-relative: DropTarget 缺少 sourceId 字段')
+      break
+    case 'move-absolute':
+      // absolute 节点移动，已在 CanvasOverlay 内部通过 update-node-position emit 处理
+      break
+    case 'move-into-container':
+    case 'show-container-dropzone':
+      // engine.moveNodeToContainer(sourceId, target.targetContainerId)
+      console.warn('[LowcodeDesigner] move-into-container: DropTarget 缺少 sourceId 字段')
+      break
+  }
 }
 
 function handleExport(): void {
@@ -722,26 +733,5 @@ function generateSchemaId(): string {
 /* 隐藏文件上传 input */
 .hidden {
   display: none;
-}
-
-/* 拖拽排序指示线（独立顶层，确保在所有 overlay 之上显示） */
-.designer-drop-indicator {
-  position: absolute;
-  height: 2px;
-  background: #409eff;
-  border-radius: 1px;
-  pointer-events: none;
-  z-index: 10000; /* 高于 AbsoluteNodeOverlay (1000) 和 DesignOverlay (900) */
-}
-
-.designer-drop-indicator::before {
-  content: '';
-  position: absolute;
-  left: -4px;
-  top: -3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #409eff;
 }
 </style>

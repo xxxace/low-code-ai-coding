@@ -21,6 +21,7 @@
     ]"
     :style="wrapperStyle"
     :data-field-id="schema['x-id']"
+    :data-container-type="schema['x-container'] !== undefined ? 'absolute' : 'relative'"
     @click="handleClick"
     @dragover.prevent="handleDragOver"
     @dragleave="handleDragLeave"
