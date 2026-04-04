@@ -59,12 +59,42 @@ design\
 **全量代码质检修复**（25 项问题，4 Batch）：全部完成 ✅
 **跨类型拖拽**：流式节点拖入 absolute 容器 ✅（已实现，含 hover 绿框高亮 + 插入容器末尾）
 **文档大扫除**（2026-04-04）：FEATURE_CHECKLIST、ARCHITECTURE 已更新；4 个过时文档已归档
+**拖拽指示线修复**（2026-04-04）：DesignOverlay 流式拖拽指示线不显示 Bug ✅
+**拖拽交互问题修复**（2026-04-04 21:50）：overlay 偏移、hover/drop 失效、流式→absolute 容器 drop ✅
 
 最新状态：
 - vue-tsc --noEmit 零错误 ✅
 - vitest run 149/149 全通过 ✅
 - FlowLayout.vue 已删除（由 XLayout 完全替代）
 - types/ 垫片层内部引用已全部迁移到直接 core/
+
+### 拖拽交互问题修复详情（2026-04-04 21:50）
+
+**问题 1: 蓝色 overlay 位置偏移**
+- 修复：`initialX/Y` 改为直接使用 schema 的 `x-position` 值，与 `processMove` 坐标系一致
+
+**问题 2: hover/drop 事件失效**
+- 修复：移除 `.design-overlay--dragging` 的 `pointer-events: auto`，改用文档级事件监听
+
+**问题 3: 流式节点无法 drop 到 absolute 容器节点**
+- 修复：`AbsoluteNodeOverlay` 添加容器 drop zone，`DesignOverlay` 对容器节点让行
+
+### 拖拽指示线 Bug 修复详情
+
+**问题**：拖拽字段时蓝色指示线不显示，但 dropIndicator ref 有值
+
+**根因**：DesignOverlay 中存在两层 dragover 监听：
+1. item-level `@dragover` → `handleDragOver` 设置 `dropIndicator`
+2. document-level `dragover` → `handleDocumentDragOver` 清除 `dropIndicator`
+
+从 node A 移到 node B 时，document dragover 在 item dragover **之前/之间**触发，清除了刚设置的 dropIndicator
+
+**修复**：引入 `dropIndicatorProtected` 标志 + 100ms 防抖 timer
+- `handleDragOver` 设置时开启 100ms 保护窗口
+- 保护期内 `handleDocumentDragOver` 直接 return，不清除
+- 相关变量：`dropIndicatorProtected` ref + `dropIndicatorProtectedTimer` (plain let)
+
+**涉及文件**：`prototype/src/designer/DesignOverlay.vue`
 
 质检修复内容摘要：
 - B-02/B-03：designMode.value 缺少 .value 的 Bug 修复（FieldRenderer/VoidContainer）

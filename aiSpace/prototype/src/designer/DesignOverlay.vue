@@ -8,9 +8,11 @@
   3. 在叠加层上以 position:absolute 绘制高亮框和操作按钮
   4. hover / click 交互直接绑定在叠加层
 
-  为什么不用全透明遮罩方案？
-  - 原因：全透明遮罩会拦截所有事件，嵌套容器的点击无法穿透
-  - 本方案每个 overlay-item 的 pointer-events 独立控制
+  定位上下文：
+  - 本组件放在滚动容器内（非 canvas-container 内），避免被 overflow 裁切
+  - overlay inset:0 撑满滚动容器，坐标基于滚动容器的 padding-box
+  - 坐标计算使用 viewport 基准（getBoundingClientRect 差值），不受滚动影响
+  - 无需减去 scrollLeft/scrollTop（overlay 和 canvas-container 在同一坐标系下）
 -->
 <template>
   <!-- 非设计模式下不渲染叠加层 -->
@@ -25,6 +27,7 @@
       <div
         class="design-overlay__item"
         :class="{
+          'design-overlay__item--selected': item.nodeId === selectedNodeId,
           'design-overlay__item--hovered': item.nodeId === hoveredNodeId && item.nodeId !== selectedNodeId,
           'design-overlay__item--container': item.isContainer,
           'design-overlay__item--draggable': isFreeLayout && item.nodeId === selectedNodeId,
@@ -107,8 +110,16 @@
     <!-- 拖拽放置指示线 -->
     <div
       v-if="dropIndicator"
-      class="design-overlay__drop-indicator"
-      :style="dropIndicator.style"
+      :style="{
+        ...dropIndicator.style,
+        position: 'absolute',
+        height: '4px',
+        background: '#409eff',
+        borderRadius: '2px',
+        pointerEvents: 'none',
+        zIndex: '950',
+        boxShadow: '0 0 4px rgba(64, 158, 255, 0.6)',
+      }"
     />
   </div>
 </template>
@@ -149,6 +160,8 @@ const emit = defineEmits<{
   (e: 'reorder-nodes', fromId: string, toId: string, position: 'before' | 'after'): void
   (e: 'move-to-container', nodeId: string, containerId: string): void
   (e: 'move-across-containers', nodeId: string, targetId: string, position: 'before' | 'after'): void
+  /** 拖拽指示线状态变化事件（用于同步到父组件的 drop-indicator DOM） */
+  (e: 'drop-indicator-change', indicator: { style: CSSProperties } | null): void
 }>()
 
 
@@ -215,6 +228,8 @@ function getActionsStyle(item: OverlayItem): CSSProperties {
 
 const overlayRef = ref<HTMLElement | null>(null)
 const hoveredNodeId = ref<string | null>(null)
+
+// 拖拽排序指示线状态（通过 expose 提供给父组件 LowcodeDesigner）
 const dropIndicator = ref<{ style: CSSProperties } | null>(null)
 
 // overlayItems: 每个字段节点对应的 DOM 坐标信息
@@ -282,44 +297,92 @@ function debouncedRefreshOverlay(): void {
   }, 16) // ~60fps，与 RAF 对齐
 }
 
-function refreshOverlay(): void {
-  if (!props.canvasEl) return
-  // 优先使用 overlayRef 的父容器作为坐标参考（更精准）
-  const referenceEl = overlayRef.value?.parentElement ?? props.canvasEl
+/**
+ * 检查节点是否位于被选中的 absolute 容器内部
+ * 如果是，则该节点不应由 DesignOverlay 渲染 overlay（避免事件拦截）
+ */
+function isInsideSelectedAbsoluteContainer(nodeId: string): boolean {
+  if (!props.selectedNodeId) return false
 
+  // 找到当前选中的节点
+  const selectedNode = flatNodes.value.find(n => n.id === props.selectedNodeId)
+  if (!selectedNode) return false
+
+  // 只有当选中的是 absolute 容器时，才需要过滤其内部子节点
+  if (selectedNode.positionType !== 'absolute' || !selectedNode.isContainer) {
+    return false
+  }
+
+  // 检查目标节点是否在被选中的容器内部（parentId 链路上）
+  let currentNode = flatNodes.value.find(n => n.id === nodeId)
+  while (currentNode) {
+    if (currentNode.parentId === props.selectedNodeId) {
+      return true
+    }
+    // 继续向上查找
+    currentNode = flatNodes.value.find(n => n.id === currentNode?.parentId)
+  }
+  return false
+}
+
+function refreshOverlay(): void {
+  console.log('[DesignOverlay] refreshOverlay called', {
+    hasCanvasEl: !!props.canvasEl,
+    flatNodesCount: flatNodes.value.length,
+    selectedNodeId: props.selectedNodeId
+  })
+  
+  if (!props.canvasEl) {
+    console.log('[DesignOverlay] refreshOverlay: canvasEl is null, skipping')
+    return
+  }
+
+  // 【诊断】打印 flatNodes 的前几个节点
+  console.log('[DesignOverlay] flatNodes sample:', flatNodes.value.slice(0, 5).map(n => ({
+    id: n.id,
+    positionType: n.positionType,
+    parentId: n.parentId
+  })))
+
+  // overlay 现在是 scroll container 的直接子节点，与 canvas-container 同级
+  // 使用 scroll container 作为坐标基准
+  const referenceEl = overlayRef.value?.parentElement ?? props.canvasEl
   const canvasRect = referenceEl.getBoundingClientRect()
   const items: OverlayItem[] = []
+  const totalNodes = flatNodes.value.length
 
   for (const node of flatNodes.value) {
-    // 过滤 absolute 非容器节点（由 AbsoluteNodeOverlay 单独处理）
-    // 过滤被选中的 absolute 容器（由 AbsoluteNodeOverlay 处理选中状态）
-    // 保留 relative 节点和未选中的 absolute 容器（用于 hover/dragover/drop 交互）
+    // 完全过滤所有 absolute 节点（包括容器和非容器）
+    // - 由 AbsoluteNodeOverlay 单独处理 absolute 节点的交互
+    // - DesignOverlay 只处理 relative 节点的拖拽排序
     if (node.positionType === 'absolute') {
-      if (node.isContainer && node.id !== props.selectedNodeId) {
-        // absolute 容器但未选中，保留用于 hover/drop 交互
-      } else {
-        continue
-      }
+      console.log('[DesignOverlay] skip absolute node:', node.id)
+      continue
     }
 
-    // 不再完全过滤容器节点
-    // - relative 容器：保留用于拖拽排序，操作按钮由 VoidContainer 内部处理
-    // - absolute 容器（未选中）：保留用于 hover/drop
-    // - absolute 容器（已选中）：跳过（由 AbsoluteNodeOverlay 处理）
+    // 过滤掉位于被选中的 absolute 容器内部的 relative 节点
+    // 这些节点的事件应由 AbsoluteNodeOverlay 统一处理，避免 DesignOverlay 的 overlay 拦截事件
+    if (isInsideSelectedAbsoluteContainer(node.id)) {
+      console.log('[DesignOverlay] skip inside container:', node.id)
+      continue
+    }
 
     // 通过 data-field-id 属性查找 DOM 节点
     const el = props.canvasEl.querySelector<HTMLElement>(
       `[data-field-id="${node.id}"]`
     )
-    if (!el) continue
+    if (!el) {
+      console.log('[DesignOverlay] DOM not found for:', node.id)
+      continue
+    }
 
     const elRect = el.getBoundingClientRect()
 
-    // 计算相对于 overlay 父容器的坐标（考虑滚动）
-    const scrollTop = referenceEl.scrollTop ?? 0
-    const scrollLeft = referenceEl.scrollLeft ?? 0
-    const relLeft = elRect.left - canvasRect.left + scrollLeft
-    const relTop = elRect.top - canvasRect.top + scrollTop
+    // 计算相对于 scroll container（overlay 的父元素）的坐标
+    // 使用 viewport 基准差值，overlay 和 canvas-container 在同一坐标系下
+    // 无需减去 scrollLeft/scrollTop（因为 overlay 是 scroll container 的子节点）
+    const relLeft = elRect.left - canvasRect.left
+    const relTop = elRect.top - canvasRect.top
 
     items.push({
       nodeId: node.id,
@@ -337,6 +400,13 @@ function refreshOverlay(): void {
   }
 
   overlayItems.value = items
+
+  // 【诊断】打印最终结果
+  console.log('[DesignOverlay] overlayItems generated:', {
+    count: items.length,
+    items: items.slice(0, 3).map(i => ({ nodeId: i.nodeId, label: i.label }))
+  })
+
 }
 
 // ============================================================
@@ -358,8 +428,19 @@ function setupObservers(): void {
   teardownObservers()
 
   // 监听 DOM 结构变化（新增/删除节点）—— 走防抖，避免连续 DOM 变更触发多次刷新
-  mutationObserverRef.value = new MutationObserver(() => {
-    debouncedRefreshOverlay()
+  mutationObserverRef.value = new MutationObserver((mutations) => {
+    // 过滤掉与 overlay 无关的变化（如样式变化、属性变化）
+    const hasMeaningfulChanges = mutations.some(m => {
+      // 只关心子节点增删，且不是 overlay 自身的变化
+      if (m.type !== 'childList') return false
+      // 检查变化的节点是否来自 overlay 内部
+      const target = m.target as HTMLElement
+      if (target.closest('.design-overlay')) return false
+      return true
+    })
+    if (hasMeaningfulChanges) {
+      debouncedRefreshOverlay()
+    }
   })
   mutationObserverRef.value.observe(props.canvasEl, {
     childList: true,
@@ -392,6 +473,14 @@ onMounted(async () => {
     mountedTimerRef.value = null
     setupObservers()
     refreshOverlay()
+    
+    // 【诊断】检查 DOM 渲染情况
+    console.log('[DesignOverlay] onMounted diagnostic:', {
+      overlayRefExists: !!overlayRef.value,
+      overlayItemsCount: overlayItems.value.length,
+      domChildrenCount: overlayRef.value?.children.length ?? 0,
+      domItemsCount: overlayRef.value?.querySelectorAll('.design-overlay__item').length ?? 0
+    })
   }, 50)
 })
 
@@ -438,11 +527,29 @@ watch(
   }
 )
 
+// 监听选中节点变化，刷新 overlay（用于过滤选中 absolute 容器内部的 relative 节点）
+watch(
+  () => props.selectedNodeId,
+  async () => {
+    await nextTick()
+    refreshOverlay()
+  },
+  { immediate: true } // 立即执行一次，确保组件挂载时就刷新
+)
+
 // ============================================================
 // 事件处理
 // ============================================================
 
 function handleItemHover(nodeId: string): void {
+  // 【诊断】检查 overlay 元素的 DOM 结构
+  console.log('[DesignOverlay] handleItemHover triggered!', {
+    nodeId,
+    overlayItemsCount: overlayItems.value.length,
+    hoveredValueBefore: hoveredNodeId.value,
+    // 检查当前渲染的 DOM 数量
+    domItemsCount: overlayRef.value?.querySelectorAll('.design-overlay__item').length ?? 0
+  })
   hoveredNodeId.value = nodeId
 }
 
@@ -451,6 +558,7 @@ function handleMouseLeave(): void {
 }
 
 function handleItemClick(nodeId: string): void {
+  console.log(`[DesignOverlay] handleItemClick: nodeId=${nodeId}`)
   emit('select-node', nodeId)
 }
 
@@ -467,6 +575,10 @@ const dragNodeId = ref<string | null>(null)
 const dragOverNodeId = ref<string | null>(null)
 /** 当前 drop 的位置意图：before/after（同层排序）或 into（移入容器） */
 const dropIntent = ref<'before' | 'after' | 'into' | null>(null)
+/** 防抖清除标志：handleDragOver 设置后短暂为 true，防止 handleDocumentDragOver 立即覆盖 */
+const dropIndicatorProtected = ref(false)
+/** 上一个保护 timeout 的 id，用于清除 */
+let dropIndicatorProtectedTimer: ReturnType<typeof setTimeout> | null = null
 
 function handleDragStart(nodeId: string, e: DragEvent): void {
   if (isFreeLayout.value) return
@@ -476,6 +588,13 @@ function handleDragStart(nodeId: string, e: DragEvent): void {
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', nodeId)
   }
+
+  // 同时存储到 sessionStorage，确保 AbsoluteNodeOverlay 能获取到（事件顺序问题）
+  sessionStorage.setItem('dragging-node-id', nodeId)
+
+  // 添加文档级事件监听，用于检测拖拽到 absolute 节点或空白画布区域
+  document.addEventListener('dragover', handleDocumentDragOver)
+  document.addEventListener('drop', handleDocumentDrop)
 }
 
 function handleDragEnd(): void {
@@ -483,6 +602,14 @@ function handleDragEnd(): void {
   dragOverNodeId.value = null
   dropIntent.value = null
   dropIndicator.value = null
+  dropIndicatorProtected.value = false
+
+  // 清理 sessionStorage
+  sessionStorage.removeItem('dragging-node-id')
+
+  // 清理文档级事件监听
+  document.removeEventListener('dragover', handleDocumentDragOver)
+  document.removeEventListener('drop', handleDocumentDrop)
 }
 
 function handleDragOver(nodeId: string, e: DragEvent): void {
@@ -493,6 +620,17 @@ function handleDragOver(nodeId: string, e: DragEvent): void {
 
   dragOverNodeId.value = nodeId
 
+  // 设置防抖保护：handleDocumentDragOver 在 100ms 内不清除 dropIndicator
+  if (dropIndicatorProtectedTimer !== null) {
+    clearTimeout(dropIndicatorProtectedTimer)
+    dropIndicatorProtectedTimer = null
+  }
+  dropIndicatorProtected.value = true
+  dropIndicatorProtectedTimer = setTimeout(() => {
+    dropIndicatorProtected.value = false
+    dropIndicatorProtectedTimer = null
+  }, 100)
+
   // 找到当前 target 的 overlay item，计算鼠标在其中的相对位置
   const targetItem = overlayItems.value.find((i) => i.nodeId === nodeId)
   if (!targetItem) return
@@ -502,10 +640,10 @@ function handleDragOver(nodeId: string, e: DragEvent): void {
   const itemLeft = parseFloat(targetItem.style.left as string) || 0
   const itemWidth = parseFloat(targetItem.style.width as string) || 0
 
-  // 获取 overlay 容器在视口的偏移，将 clientY 转换为 overlay 坐标系
-  const overlayRect = overlayRef.value?.getBoundingClientRect()
-  if (!overlayRect) return
-  const relY = e.clientY - overlayRect.top
+  // 统一坐标参考系：使用 overlay 的父容器（滚动容器）的 rect
+  const referenceRect = overlayRef.value?.parentElement?.getBoundingClientRect()
+  if (!referenceRect) return
+  const relY = e.clientY - referenceRect.top
 
   // 鼠标在 item 中的相对比例（0 ~ 1）
   const ratio = itemHeight > 0 ? (relY - itemTop) / itemHeight : 0.5
@@ -552,6 +690,108 @@ function handleDragLeave(nodeId: string, e: DragEvent): void {
   }
 }
 
+/**
+ * 文档级 dragover 处理 —— 用于检测拖拽到 absolute 非容器节点或空白画布区域
+ * 对于 absolute 容器节点，让 AbsoluteNodeOverlay 处理
+ */
+function handleDocumentDragOver(e: DragEvent): void {
+  if (!dragNodeId.value) return
+  if (isFreeLayout.value) return
+
+  // 【核心修复】当 dropIndicatorProtected=true 时，不执行任何清除逻辑
+  // item-level handleDragOver 刚设置完 dropIndicator，100ms 内 document dragover 不覆盖
+  if (dropIndicatorProtected.value) {
+    return
+  }
+
+  // 检查鼠标下的元素
+  const target = document.elementFromPoint(e.clientX, e.clientY)
+  if (!target) {
+    // 鼠标不在任何元素上，清除 hover 状态
+    if (dragOverNodeId.value) {
+      dragOverNodeId.value = null
+      dropIntent.value = null
+      dropIndicator.value = null
+    }
+    return
+  }
+
+  // 检查是否在 canvas 区域内
+  const canvasField = target.closest('[data-field-id]')
+  if (!canvasField) {
+    // 鼠标不在任何字段上，可能是空白区域
+    if (dragOverNodeId.value) {
+      dragOverNodeId.value = null
+      dropIntent.value = null
+      dropIndicator.value = null
+    }
+    return
+  }
+
+  // 检查是否是 absolute 非容器节点
+  const fieldId = canvasField.getAttribute('data-field-id')
+
+  if (fieldId) {
+    const node = flatNodes.value.find(n => n.id === fieldId)
+    if (node?.positionType === 'absolute' && !node.isContainer) {
+      // absolute 非容器节点，清除 hover 状态
+      if (dragOverNodeId.value) {
+        dragOverNodeId.value = null
+        dropIntent.value = null
+        dropIndicator.value = null
+      }
+      // 不 return，让 AbsoluteNodeOverlay 的 drop zone 可以接收事件
+    }
+    // absolute 容器节点：不执行任何操作，让 AbsoluteNodeOverlay 处理
+  }
+}
+
+/**
+ * 文档级 drop 处理 —— 用于处理在 absolute 非容器节点或空白区域释放的情况
+ * 对于 absolute 容器节点，让 AbsoluteNodeOverlay 处理
+ */
+function handleDocumentDrop(e: DragEvent): void {
+  if (!dragNodeId.value) return
+  if (isFreeLayout.value) return
+
+  // 检查鼠标下的元素
+  const target = document.elementFromPoint(e.clientX, e.clientY)
+  if (!target) {
+    // 在空白区域释放，清除状态
+    dragNodeId.value = null
+    dragOverNodeId.value = null
+    dropIntent.value = null
+    dropIndicator.value = null
+    return
+  }
+
+  // 检查是否在 canvas 区域内
+  const canvasField = target.closest('[data-field-id]')
+  if (!canvasField) {
+    // 在空白区域释放，清除状态
+    dragNodeId.value = null
+    dragOverNodeId.value = null
+    dropIntent.value = null
+    dropIndicator.value = null
+    return
+  }
+
+  // 检查是否是 absolute 非容器节点
+  const fieldId = canvasField.getAttribute('data-field-id')
+  if (fieldId) {
+    const node = flatNodes.value.find(n => n.id === fieldId)
+    if (node?.positionType === 'absolute' && !node.isContainer) {
+      // absolute 非容器节点，清除状态（不允许放置）
+      dragNodeId.value = null
+      dragOverNodeId.value = null
+      dropIntent.value = null
+      dropIndicator.value = null
+      return
+    }
+    // absolute 容器节点：不执行任何操作，让 AbsoluteNodeOverlay 处理
+  }
+}
+
 function handleDrop(toNodeId: string): void {
   if (isFreeLayout.value) return
   const fromId = dragNodeId.value
@@ -593,6 +833,12 @@ function handleDrop(toNodeId: string): void {
 
 defineExpose({
   refresh: refreshOverlay,
+  dropIndicator,
+})
+
+// 监听 dropIndicator 变化，同步到父组件
+watch(dropIndicator, (val) => {
+  emit('drop-indicator-change', val ? { style: val.style } : null)
 })
 </script>
 
@@ -600,9 +846,11 @@ defineExpose({
 .design-overlay {
   position: absolute;
   inset: 0;
+  /* 禁用 pointer-events，让 absolute 节点可以正常交互 */
+  /* drag 事件不依赖 pointer-events，会正常冒泡到 overlay items */
   pointer-events: none;
   overflow: visible;
-  z-index: 100; /* 确保覆盖 absolute 容器和 Element Plus 组件 */
+  z-index: 1001; /* 必须高于 AbsoluteNodeOverlay (1000)，使其层叠上下文在 AbsoluteNodeOverlay 之上 */
 }
 
 .design-overlay__item {
@@ -613,7 +861,7 @@ defineExpose({
   border: 1px dashed transparent;
   border-radius: 2px;
   transition: border-color 0.15s;
-  z-index: 101; /* 比容器本身高一层，确保覆盖容器内的子元素 */
+  z-index: 1002; /* 相对于 DesignOverlay 容器的层叠上下文（z-index 1001），确保覆盖 absolute 容器内的子元素 */
 }
 
 /* hover 状态 */
@@ -626,6 +874,27 @@ defineExpose({
 .design-overlay__item--selected {
   border: 2px solid #409eff !important;
   background: rgba(64, 158, 255, 0.06);
+}
+
+/* 拖拽放置指示线 */
+.design-overlay__drop-indicator {
+  position: absolute;
+  height: 3px;
+  background: #409eff;
+  border-radius: 1.5px;
+  pointer-events: none;
+  z-index: 950; /* 高于普通 overlay items (901)，低于绝对容器 overlay */
+  /* 小圆点 */
+  &::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #409eff;
+  }
 }
 
 /* 容器类型 hover 时用蓝绿色区分 */
@@ -716,24 +985,5 @@ defineExpose({
   white-space: nowrap;
 }
 
-/* 拖拽放置指示线 */
-.design-overlay__drop-indicator {
-  position: absolute;
-  height: 2px;
-  background: #409eff;
-  border-radius: 1px;
-  pointer-events: none;
-  z-index: 200;
-}
-
-.design-overlay__drop-indicator::before {
-  content: '';
-  position: absolute;
-  left: -4px;
-  top: -3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #409eff;
-}
+/* 拖拽放置指示线样式已移至 LowcodeDesigner.vue */
 </style>

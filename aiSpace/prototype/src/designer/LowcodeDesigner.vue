@@ -109,36 +109,48 @@
               class="canvas-renderer__preview"
             />
           </div>
-
-          <!-- Absolute 节点交互层（处理自由布局节点的拖拽缩放） -->
-          <AbsoluteNodeOverlay
-            v-if="currentSchema"
-            :schema="currentSchema"
-            :selected-node-id="engine.selectedNodeId.value"
-            @select-node="engine.selectNode"
-            @remove-node="handleRemoveNode"
-            @duplicate-node="handleDuplicateNode"
-            @update-node-position="handleUpdateNodePosition"
-            @update-node-size="handleUpdateNodeSize"
-            @save-snapshot="engine.saveNodePositionSnapshot"
-          />
-
-          <!-- 流式布局交互层（处理 hover 高亮、点击选中、拖拽排序、上下移动） -->
-          <DesignOverlay
-            v-if="currentSchema"
-            :schema="currentSchema"
-            :selected-node-id="engine.selectedNodeId.value"
-            :canvas-el="canvasRef"
-            :design-mode="true"
-            @select-node="engine.selectNode"
-            @remove-node="handleRemoveNode"
-            @duplicate-node="handleDuplicateNode"
-            @move-node="handleMoveNode"
-            @reorder-nodes="handleReorderNodes"
-            @move-to-container="handleMoveToContainer"
-            @move-across-containers="handleMoveAcrossContainers"
-          />
         </div>
+
+        <!-- 两个 overlay 都放在 canvas-container 外层，避免被滚动容器裁切 -->
+        <!-- Absolute 节点交互层（处理自由布局节点的拖拽缩放） -->
+        <AbsoluteNodeOverlay
+          v-if="currentSchema"
+          :schema="currentSchema"
+          :selected-node-id="engine.selectedNodeId.value"
+          :canvas-el="canvasRef"
+          @select-node="engine.selectNode"
+          @remove-node="handleRemoveNode"
+          @duplicate-node="handleDuplicateNode"
+          @update-node-position="handleUpdateNodePosition"
+          @update-node-size="handleUpdateNodeSize"
+          @move-to-container="handleMoveToContainer"
+          @save-snapshot="engine.saveNodePositionSnapshot"
+          @reorder-nodes="handleReorderNodes"
+        />
+
+        <!-- 流式布局交互层（处理 hover 高亮、点击选中、拖拽排序、上下移动） -->
+        <DesignOverlay
+          v-if="currentSchema"
+          :schema="currentSchema"
+          :selected-node-id="engine.selectedNodeId.value"
+          :canvas-el="canvasRef"
+          :design-mode="true"
+          @select-node="engine.selectNode"
+          @remove-node="handleRemoveNode"
+          @duplicate-node="handleDuplicateNode"
+          @move-node="handleMoveNode"
+          @reorder-nodes="handleReorderNodes"
+          @move-to-container="handleMoveToContainer"
+          @move-across-containers="handleMoveAcrossContainers"
+          @drop-indicator-change="handleDropIndicatorChange"
+        />
+
+        <!-- 拖拽排序指示线（独立顶层，确保在所有 overlay 之上显示） -->
+        <div
+          v-if="dropIndicatorRef"
+          class="designer-drop-indicator"
+          :style="dropIndicatorRef.style"
+        />
       </div>
 
       <!-- 右侧属性面板 -->
@@ -194,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide } from "vue";
+import { ref, computed, provide, type CSSProperties } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { RefreshLeft, RefreshRight, Plus } from "@element-plus/icons-vue";
 import type { PageSchema, FieldSchema } from "../core/schema";
@@ -252,6 +264,14 @@ const canvasRef = ref<HTMLElement | null>(null);
 const showPreview = ref(false);
 const showCodeDialog = ref(false);
 const importFileInputRef = ref<HTMLInputElement | null>(null);
+
+// 拖拽排序指示线状态（通过 emit 事件从 DesignOverlay 同步）
+// 注意：不能用 computed + template ref，因为 defineExpose 暴露的 ref 是静态解包的，不是响应式的
+const dropIndicatorRef = ref<{ style: CSSProperties } | null>(null);
+
+function handleDropIndicatorChange(indicator: { style: CSSProperties } | null): void {
+  dropIndicatorRef.value = indicator
+}
 
 const currentSchema = computed(() => engine.schema.value);
 
@@ -579,8 +599,10 @@ function generateSchemaId(): string {
   padding: 16px;
   background: #f0f2f5;
   min-height: 0;
-  position: relative; /* 让 AbsoluteNodeOverlay 有正确的定位上下文 */
+  position: relative; /* 让 overlay 有正确的定位上下文 */
   min-width: 0;
+  /* 创建层叠上下文，确保子元素的 z-index 相对于此容器 */
+  z-index: 1;
 }
 
 .canvas-container {
@@ -590,6 +612,8 @@ function generateSchemaId(): string {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow: visible;
+  /* 确保 canvas 不创建新的层叠上下文，让 overlay 能正确覆盖 */
+  isolation: auto;
 }
 
 .canvas-empty {
@@ -698,5 +722,26 @@ function generateSchemaId(): string {
 /* 隐藏文件上传 input */
 .hidden {
   display: none;
+}
+
+/* 拖拽排序指示线（独立顶层，确保在所有 overlay 之上显示） */
+.designer-drop-indicator {
+  position: absolute;
+  height: 2px;
+  background: #409eff;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 10000; /* 高于 AbsoluteNodeOverlay (1000) 和 DesignOverlay (900) */
+}
+
+.designer-drop-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #409eff;
 }
 </style>
