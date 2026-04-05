@@ -43,6 +43,58 @@ export function findNodeById(
 }
 
 /**
+ * 按 x-id 查找父节点（返回父节点的 properties 对象）
+ * @returns 父节点的 properties，未找到返回 null
+ */
+export function findParentProperties(
+  rootSchema: SchemaWithProperties,
+  nodeId: string
+): Record<string, FieldSchema> | null {
+  const properties = 'properties' in rootSchema ? rootSchema.properties : null
+  if (!properties) return null
+
+  for (const fieldSchema of Object.values(properties)) {
+    if (fieldSchema['x-id'] === nodeId) {
+      // 找到节点了，返回当前的 properties 作为其父节点
+      return properties
+    }
+
+    if ('properties' in fieldSchema && fieldSchema.properties) {
+      const found = findParentProperties(fieldSchema as SchemaWithProperties, nodeId)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+/**
+ * 按 x-id 查找父节点（返回父节点本身）
+ * @returns 父节点，未找到返回 null
+ */
+export function findParentNode(
+  rootSchema: SchemaWithProperties,
+  nodeId: string
+): FieldSchema | null {
+  const properties = 'properties' in rootSchema ? rootSchema.properties : null
+  if (!properties) return null
+
+  for (const fieldSchema of Object.values(properties)) {
+    if (fieldSchema['x-id'] === nodeId) {
+      // 找到节点了，这个节点是子节点，返回当前 rootSchema 作为父节点
+      return rootSchema
+    }
+
+    if ('properties' in fieldSchema && fieldSchema.properties) {
+      const found = findParentNode(fieldSchema as SchemaWithProperties, nodeId)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+/**
  * 按路径字符串获取 properties 对象
  * @param path 空字符串表示根 properties
  */

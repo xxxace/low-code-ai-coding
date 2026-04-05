@@ -16,7 +16,7 @@
  * - emit('drag-end') 通知父组件退出拖拽模式
  */
 
-import { ref, reactive, type Ref, type CSSProperties } from 'vue'
+import { ref, reactive, type Ref, type CSSProperties, nextTick } from 'vue'
 import type { PageSchema, SchemaNode } from '../../core/schema'
 import { findNodeById } from '../engine/schemaUtils'
 
@@ -27,9 +27,11 @@ import { findNodeById } from '../engine/schemaUtils'
 interface Props {
   schema: PageSchema
   interactionMode: 'idle' | 'mouse-drag' | 'html5-dnd'
+  selectedNodeId: string | null  // 用于 handleResizeStart（新刺 B）
 }
 
 interface DropTarget {
+  sourceNodeId: string | null  // 新增：拖拽源节点 ID（用于排序）
   action: 'sort-relative' | 'move-absolute' | 'move-into-container' | 'show-container-dropzone'
   targetContainerId: string | null
   beforeNodeId: string | null
@@ -70,7 +72,8 @@ const CLICK_THRESHOLD = 5 // px
 export function useDragInteraction(
   props: Readonly<Props>,
   emit: (event: any, ...args: any[]) => void,
-  canvasEl: Ref<HTMLElement | null>
+  canvasEl: Ref<HTMLElement | null>,
+  selectedNodeId: Ref<string | null>  // 用于 handleResizeStart（新刺 B）
 ) {
   // ============================================================
   // 状态
@@ -88,6 +91,7 @@ export function useDragInteraction(
     startHeight: 0,
     targetNodeId: null as string | null,
     resizeDir: null as string | null,
+    sourceNodeId: null as string | null,  // 新增：拖拽源节点 ID
   })
 
   const dropTarget = ref<DropTarget | null>(null)
@@ -149,23 +153,46 @@ export function useDragInteraction(
 
   function handleMouseDown(e: MouseEvent) {
     if (props.interactionMode === 'html5-dnd') return
-    e.preventDefault()
-    e.stopPropagation()
 
     const nodeEl = (e.target as HTMLElement).closest('[data-field-id]') as HTMLElement | null
     if (!nodeEl) return
 
     const nodeId = nodeEl.getAttribute('data-field-id')!
+    const schema = getNodeSchema(nodeId)
+    const isAbsolute = (schema as any)?.['x-position-type'] === 'absolute'
+
+    // fix-3: 检查点击目标是否直接是 nodeEl 本身（而非其子元素）
+    // 如果 e.target 是 nodeEl 的子元素，说明点击的是容器内部的节点，
+    // 应该让事件冒泡到子节点的 click handler
+    // fix-4: 对于 absolute 节点，放宽判断条件——只要点击在节点范围内就允许拖拽
+    // 因为 absolute 节点的 overlay 和目标节点是同一个 DOM 元素
+    const isDirectClick = e.target === nodeEl || 
+                          (e.target as HTMLElement).parentElement === nodeEl ||
+                          nodeEl.contains(e.target as Node)
+
+    // fix: 如果点击的是流式布局节点（非 absolute），且不是当前选中的节点，
+    // 或者点击的是容器内部的子节点（非直接点击容器本身），
+    // 则只触发选中，不启动拖拽，让 click 事件正常传递到子组件
+    // fix-4: absolute 节点放宽判断，允许点击子元素也启动拖拽
+    if (!isAbsolute && nodeId !== selectedNodeId.value && !isDirectClick) {
+      // 不阻止事件，让 FieldRenderer/VoidContainer 的 @click 处理选中
+      return
+    }
+
+    // 对于 absolute 节点直接点击，或已选中的流式节点，启动拖拽模式
+    e.preventDefault()
+    e.stopPropagation()
+
     dragState.isDragging = true
     dragState.hasMoved = false
     dragState.targetNodeId = nodeId
+    dragState.sourceNodeId = nodeId  // 记录源节点 ID（新刺 3）
     dragState.startX = e.clientX
     dragState.startY = e.clientY
     lastMouseX = e.clientX
     lastMouseY = e.clientY
 
-    const schema = getNodeSchema(nodeId)
-    dragState.dragType = (schema as any)?.['x-position-type'] === 'absolute' ? 'move' : 'sort'
+    dragState.dragType = isAbsolute ? 'move' : 'sort'
 
     emit('drag-start', 'mouse-drag')
   }
@@ -196,25 +223,34 @@ export function useDragInteraction(
     }
   }
 
-  function handleMouseUp() {
+  async function handleMouseUp() {
     if (!dragState.isDragging) return
 
     if (dragState.hasMoved) {
       if (dragState.dragType === 'sort') {
         const finalTarget = calcDropTarget(lastMouseX, lastMouseY)
         emit('drop-complete', finalTarget)
+
+        // 同步清空 dropTarget（避免指示器残留，新刺 C 更正）
+        dropTarget.value = null
       } else if (dragState.dragType === 'move') {
-        emit('update-node-position', dragState.targetNodeId!, {
-          x: dragState.startNodeX ?? 0,
-          y: dragState.startNodeY ?? 0,
-        })
-        // 清除内联 style，让 Vue 响应式接管
+        // 计算最终坐标：初始位置 + 偏移量（修复 4）
+        const dx = lastMouseX - dragState.startX
+        const dy = lastMouseY - dragState.startY
+        // 先清除内联 style，让 Vue 响应式接管
         const el = getNodeElById(dragState.targetNodeId!)
         if (el) {
           el.style.left = ''
           el.style.top = ''
           el.classList.remove('is-dragging')
         }
+        // 再 emit 更新，确保 Vue 能正确计算新位置
+        emit('update-node-position', dragState.targetNodeId!, {
+          x: (dragState.startNodeX ?? 0) + dx,
+          y: (dragState.startNodeY ?? 0) + dy,
+        })
+        // 等待 Vue 完成 DOM 更新
+        await nextTick()
       } else if (dragState.dragType === 'resize') {
         const el = getNodeElById(dragState.targetNodeId!)
         emit('update-node-size', dragState.targetNodeId!, {
@@ -237,6 +273,7 @@ export function useDragInteraction(
     dragState.hasMoved = false
     dragState.dragType = null
     dragState.targetNodeId = null
+    dragState.sourceNodeId = null  // 重置 sourceNodeId
     dragState.startNodeX = null
     dragState.startNodeY = null
     dragState.resizeDir = null
@@ -253,12 +290,14 @@ export function useDragInteraction(
     e.preventDefault()
     e.stopPropagation()
 
+    // 新增（新刺 B）：直接使用 selectedNodeId，不依赖 closest 查找
     const handleEl = (e.target as HTMLElement).closest('[data-resize-dir]') as HTMLElement | null
     const dir = handleEl?.getAttribute('data-resize-dir') ?? ''
-    const nodeEl = (e.target as HTMLElement).closest('[data-field-id]') as HTMLElement | null
-    if (!nodeEl) return
+    const nodeId = selectedNodeId.value
+    if (!nodeId) return
 
-    const nodeId = nodeEl.getAttribute('data-field-id')!
+    const nodeEl = getNodeElById(nodeId)
+    if (!nodeEl) return
 
     dragState.isDragging = true
     dragState.hasMoved = true
@@ -268,7 +307,6 @@ export function useDragInteraction(
     dragState.startX = e.clientX
     dragState.startY = e.clientY
 
-    const schema = getNodeSchema(nodeId)
     const nodeRect = nodeEl.getBoundingClientRect()
     dragState.startWidth = nodeRect.width
     dragState.startHeight = nodeRect.height
@@ -320,6 +358,7 @@ export function useDragInteraction(
     ) {
       return (
         dropTarget.value ?? {
+          sourceNodeId: dragState.sourceNodeId,  // 保留现有 sourceNodeId
           action: 'sort-relative',
           targetContainerId: null,
           beforeNodeId: null,
@@ -329,10 +368,26 @@ export function useDragInteraction(
     }
 
     const target = document.elementFromPoint(clientX, clientY)
-    const targetNodeEl = target?.closest('[data-field-id]') as HTMLElement | null
+
+    // 新增（新刺 A）：跳过 overlay 自己的元素（避免被按钮/handle遮挡）
+    let targetNodeEl: HTMLElement | null = null
+    if (target?.closest('.canvas-overlay')) {
+      // 向上递归找非 overlay 的祖先
+      let parent = target.parentElement
+      while (parent) {
+        if (!parent.classList.contains('canvas-overlay')) {
+          break
+        }
+        parent = parent.parentElement
+      }
+      targetNodeEl = parent?.closest('[data-field-id]') as HTMLElement | null
+    } else {
+      targetNodeEl = target?.closest('[data-field-id]') as HTMLElement | null
+    }
 
     if (!targetNodeEl) {
       return {
+        sourceNodeId: dragState.sourceNodeId,
         action: 'sort-relative',
         targetContainerId: null,
         beforeNodeId: null,
@@ -345,6 +400,7 @@ export function useDragInteraction(
 
     if (!schema) {
       return {
+        sourceNodeId: dragState.sourceNodeId,
         action: 'sort-relative',
         targetContainerId: null,
         beforeNodeId: null,
@@ -352,16 +408,44 @@ export function useDragInteraction(
       }
     }
 
+    // fix-3：先判断是否是 absolute 容器，再判断是否是可移动的 absolute 节点
+    // 容器：type === 'void' && x-position-type === 'absolute'
+    // 可移动节点：x-position-type === 'absolute' && 非容器
     if ((schema as any)['x-position-type'] === 'absolute') {
-      if ((schema as any)['x-container'] !== undefined) {
+      // absolute 节点可能是容器（type=void）也可能是普通节点
+      if (schema.type === 'void') {
+        // absolute 容器：检查源节点是否已经在该容器内
+        const sourceId = dragState.sourceNodeId
+        if (sourceId) {
+          const sourceEl = getNodeElById(sourceId)
+          const targetContainerEl = getNodeElById(nodeId)
+          const isAlreadyInside =
+            sourceEl?.closest('[data-container-type="absolute"]') ===
+            targetContainerEl
+
+          if (isAlreadyInside) {
+            // 源节点已在容器内 → 仅移动位置，不迁移容器
+            return {
+              sourceNodeId: dragState.sourceNodeId,
+              action: 'move-absolute',
+              targetContainerId: null,
+              beforeNodeId: null,
+              position: null,
+            }
+          }
+        }
+        // 源节点不在容器内 → 支持拖入容器
         return {
-          action: 'show-container-dropzone',
+          sourceNodeId: dragState.sourceNodeId,
+          action: 'move-into-container',
           targetContainerId: nodeId,
           beforeNodeId: null,
           position: null,
         }
       } else {
+        // 普通 absolute 节点：允许移动位置
         return {
+          sourceNodeId: dragState.sourceNodeId,
           action: 'move-absolute',
           targetContainerId: null,
           beforeNodeId: null,
@@ -372,6 +456,7 @@ export function useDragInteraction(
       const containerEl = targetNodeEl.closest('[data-container-type="absolute"]') as HTMLElement | null
       const rect = targetNodeEl.getBoundingClientRect()
       return {
+        sourceNodeId: dragState.sourceNodeId,
         action: 'sort-relative',
         targetContainerId: containerEl?.getAttribute('data-field-id') ?? null,
         beforeNodeId: nodeId,

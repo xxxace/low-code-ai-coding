@@ -36,7 +36,7 @@
         :path-prefix="pathPrefix"
         :columns="columns"
         :node-style="getNodeStyle(fieldSchema)"
-        @node-click="handleNodeClick"
+        :on-node-click="handleNodeClick"
       />
 
       <!-- 普通字段：FieldRenderer 根元素直接承载 position 样式 -->

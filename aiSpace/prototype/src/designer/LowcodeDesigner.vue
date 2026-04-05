@@ -125,6 +125,7 @@
           @update-node-size="handleUpdateNodeSize"
           @sort-nodes="handleReorderNodes"
           @move-node-to-container="handleMoveToContainer"
+          @move-node="handleMoveNode"
           @drag-start="handleDragStart"
           @drag-end="handleDragEnd"
           @drop-complete="handleDropComplete"
@@ -195,10 +196,11 @@
 import { ref, computed, provide, type CSSProperties } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { RefreshLeft, RefreshRight, Plus, DocumentCopy, Delete } from "@element-plus/icons-vue";
-import type { PageSchema, FieldSchema } from "../core/schema";
+import type { PageSchema, FieldSchema, SchemaNode } from "../core/schema";
 import { useDesignerEngine } from "./engine/designerEngine";
 import { useMaterialDrag } from "./composables/useMaterialDrag";
 import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
+import { findNodeById, findParentNode } from "./engine/schemaUtils";
 import FormRenderer from "../renderer/FormRenderer.vue";
 import MaterialPalette from "./MaterialPalette.vue";
 import PageProperties from "./PageProperties.vue";
@@ -326,11 +328,15 @@ function handleMoveNode(nodeId: string, direction: 'up' | 'down'): void {
   engine.moveNode(nodeId, direction);
 }
 
-function handleReorderNodes(
-  fromId: string,
-  toId: string,
-  position: 'before' | 'after'
-): void {
+function handleReorderNodes({
+  fromId,
+  toId,
+  position,
+}: {
+  fromId: string;
+  toId: string;
+  position: 'before' | 'after';
+}): void {
   engine.sortNodes(fromId, toId, position);
 }
 
@@ -359,21 +365,53 @@ function handleDropComplete(target: any): void {
   // 这里处理具体的 drop 逻辑
   if (!target) return
 
-  // TODO: DropTarget 接口中缺少源节点 ID 字段，暂时无法执行排序/移动操作
-  // 需要在 useDragInteraction.ts 的 DropTarget 接口中添加 sourceId 字段
   switch (target.action) {
-    case 'sort-relative':
-      // engine.sortNodes(sourceId, target.beforeNodeId, target.position)
-      console.warn('[LowcodeDesigner] sort-relative: DropTarget 缺少 sourceId 字段')
+    case 'sort-relative': {
+      // 排序逻辑（新刺 3 + 新刺 D 更正）
+      if (!target.sourceNodeId) {
+        console.warn('[LowcodeDesigner] sort-relative: 缺少 sourceNodeId')
+        break
+      }
+
+      if (target.beforeNodeId) {
+        // 正常排序：beforeNodeId 不为 null
+        engine.sortNodes(target.sourceNodeId, target.beforeNodeId, target.position!)
+      } else {
+        // 拖到末尾（beforeNodeId=null）：查找同容器最后一个节点，用 'after' 追加（新刺 D 更正）
+        const schema = engine.schema.value
+        if (!schema) break
+
+        const sourceNode = findNodeById(schema.schema, target.sourceNodeId)
+        if (!sourceNode) break
+
+        // 找到源节点的父容器
+        const parent = findParentNode(schema.schema, target.sourceNodeId)
+        if (!parent || !('properties' in parent)) break
+
+        // 找到容器里最后一个节点
+        const children = Object.values(parent.properties as Record<string, SchemaNode>)
+        const lastNode = children[children.length - 1] as SchemaNode | undefined
+
+        if (lastNode && (lastNode as any)['x-id'] !== target.sourceNodeId) {
+          // 用 'after' 追加到最后一个节点后
+          engine.sortNodes(target.sourceNodeId, (lastNode as any)['x-id'], 'after')
+        }
+      }
       break
+    }
     case 'move-absolute':
       // absolute 节点移动，已在 CanvasOverlay 内部通过 update-node-position emit 处理
       break
     case 'move-into-container':
-    case 'show-container-dropzone':
+    case 'show-container-dropzone': {
       // engine.moveNodeToContainer(sourceId, target.targetContainerId)
-      console.warn('[LowcodeDesigner] move-into-container: DropTarget 缺少 sourceId 字段')
+      if (!target.sourceNodeId || !target.targetContainerId) {
+        console.warn('[LowcodeDesigner] move-into-container: 缺少 sourceNodeId 或 targetContainerId')
+        break
+      }
+      engine.moveNodeToContainer(target.sourceNodeId, target.targetContainerId)
       break
+    }
   }
 }
 

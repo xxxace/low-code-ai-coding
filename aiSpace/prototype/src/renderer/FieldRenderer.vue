@@ -29,7 +29,6 @@
         designMode && fieldState?.display === 'hidden'
           ? 'lowcode-field-wrapper--design-hidden'
           : '',
-        designMode && isSelected ? 'lowcode-field-wrapper--selected' : '',
       ]"
       :data-field-path="path"
       :data-field-id="schema['x-id']"
@@ -598,13 +597,6 @@ const elFormRules = computed<FormItemRule[]>(() => {
 .lowcode-field-wrapper--absolute {
   padding: 0 !important;
   overflow: hidden;
-}
-
-/** 设计模式下，选中节点的蓝色边框高亮 */
-.lowcode-field-wrapper--selected {
-  outline: 2px solid #409eff;
-  outline-offset: -2px;
-  background: rgba(64, 158, 255, 0.05);
 }
 
 /** 设计模式下，hover 高亮（未选中时）- 只在 design-mode class 下生效 */

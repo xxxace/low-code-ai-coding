@@ -28,7 +28,8 @@ interface Props {
 
 export function useNodeOverlay(
   props: Readonly<Props>,
-  canvasEl: Ref<HTMLElement | null>
+  canvasEl: Ref<HTMLElement | null>,
+  overlayEl: Ref<HTMLElement | null>  // 用于坐标参考基点（新增）
 ) {
   // ============================================================
   // 状态
@@ -44,20 +45,21 @@ export function useNodeOverlay(
    * 计算 hover 节点的样式
    */
   function getHoverStyle(nodeId: string): CSSProperties {
-    if (!canvasEl.value) return { display: 'none' as const }
+    if (!canvasEl.value || !overlayEl.value) return { display: 'none' as const }
     const el = canvasEl.value.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`)
     if (!el) {
       console.warn('[useNodeOverlay] getHoverStyle: 找不到节点元素', { nodeId, canvasEl: canvasEl.value })
       return { display: 'none' as const }
     }
 
-    const canvasRect = canvasEl.value.getBoundingClientRect()
+    // 坐标参考基点改为 overlayEl（新刺 1）
+    const overlayRect = overlayEl.value.getBoundingClientRect()
     const nodeRect = el.getBoundingClientRect()
 
     return {
       position: 'absolute',
-      left: `${nodeRect.left - canvasRect.left}px`,
-      top: `${nodeRect.top - canvasRect.top}px`,
+      left: `${nodeRect.left - overlayRect.left}px`,
+      top: `${nodeRect.top - overlayRect.top}px`,
       width: `${nodeRect.width}px`,
       height: `${nodeRect.height}px`,
       border: '1px solid rgba(59, 130, 246, 0.5)',
@@ -70,8 +72,8 @@ export function useNodeOverlay(
    * 计算选中节点的样式
    */
   function getSelectedStyle(nodeId: string): CSSProperties {
-    if (!canvasEl.value) {
-      console.warn('[useNodeOverlay] getSelectedStyle: canvasEl 为 null')
+    if (!canvasEl.value || !overlayEl.value) {
+      console.warn('[useNodeOverlay] getSelectedStyle: canvasEl 或 overlayEl 为 null')
       return { display: 'none' as const }
     }
     const el = canvasEl.value.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`)
@@ -80,13 +82,14 @@ export function useNodeOverlay(
       return { display: 'none' as const }
     }
 
-    const canvasRect = canvasEl.value.getBoundingClientRect()
+    // 坐标参考基点改为 overlayEl（新刺 1）
+    const overlayRect = overlayEl.value.getBoundingClientRect()
     const nodeRect = el.getBoundingClientRect()
 
     return {
       position: 'absolute',
-      left: `${nodeRect.left - canvasRect.left}px`,
-      top: `${nodeRect.top - canvasRect.top}px`,
+      left: `${nodeRect.left - overlayRect.left}px`,
+      top: `${nodeRect.top - overlayRect.top}px`,
       width: `${nodeRect.width}px`,
       height: `${nodeRect.height}px`,
       border: '2px solid #409eff',

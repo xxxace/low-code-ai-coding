@@ -15,13 +15,12 @@
     ref="voidWrapperRef"
     class="void-wrapper"
     :class="[
-      selectedClass,
       designMode ? 'design-mode' : '',
       isDragOver ? 'void-wrapper--drag-over' : ''
     ]"
     :style="wrapperStyle"
     :data-field-id="schema['x-id']"
-    :data-container-type="schema['x-container'] !== undefined ? 'absolute' : 'relative'"
+    :data-container-type="schema['x-position-type'] === 'absolute' ? 'absolute' : 'relative'"
     @click="handleClick"
     @dragover.prevent="handleDragOver"
     @dragleave="handleDragLeave"
@@ -197,10 +196,7 @@ const isAbsoluteMode = computed(
   () => props.schema["x-position-type"] === "absolute",
 );
 
-/** 选中高亮类名 */
-const selectedClass = computed(() =>
-  isSelected.value && !isAbsoluteMode.value ? "void-container--selected" : "",
-);
+
 
 /**
  * Wrapper 样式：承载定位和选中状态
@@ -404,13 +400,6 @@ function handleDrop(e: DragEvent): void {
 
 .lowcode-void-container {
   min-width: 0;
-}
-
-/** 设计模式下，选中容器的蓝色边框高亮 */
-.void-container--selected {
-  outline: 2px solid #409eff;
-  outline-offset: 2px;
-  background: rgba(64, 158, 255, 0.05);
 }
 
 /** 拖拽进入容器时的视觉反馈 */
