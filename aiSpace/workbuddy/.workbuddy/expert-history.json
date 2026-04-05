@@ -168,7 +168,40 @@
         "usedAt": 1775310331503,
         "industryId": "all"
       }
+    ],
+    "b799682166634c1fbf2eb19fbee1b879": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775356522621,
+        "industryId": "all"
+      }
+    ],
+    "8464ec9d75cc4ce0b2222fddd4e71f9a": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775376849577,
+        "industryId": "all"
+      }
+    ],
+    "0456785419254a5d969292e7db41f67f": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775378906820,
+        "industryId": "all"
+      }
     ]
   },
-  "lastUpdated": 1775315967965
+  "lastUpdated": 1775378946014
 }
