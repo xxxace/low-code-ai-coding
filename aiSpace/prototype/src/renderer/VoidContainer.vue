@@ -383,12 +383,6 @@ function handleDrop(e: DragEvent): void {
   cursor: pointer;
 }
 
-/** 设计模式下，hover 高亮（未选中时）- 只在 design-mode class 下生效 */
-.void-wrapper.design-mode:hover {
-  outline: 1px dashed #409eff;
-  outline-offset: 2px;
-}
-
 .lowcode-void-card :deep(.el-card__body) {
   padding: 12px;
   min-width: 0;
