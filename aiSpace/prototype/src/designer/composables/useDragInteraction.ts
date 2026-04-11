@@ -259,15 +259,22 @@ export function useDragInteraction(
         await nextTick()
       } else if (dragState.dragType === 'resize') {
         const el = getNodeElById(dragState.targetNodeId!)
-        emit('update-node-size', dragState.targetNodeId!, {
-          width: parseFloat(el?.style.width ?? String(dragState.startWidth)),
-          height: parseFloat(el?.style.height ?? String(dragState.startHeight)),
-        })
+        // 正确处理空字符串：parseFloat('') 返回 NaN，需兜底
+        const rawWidth = el?.style.width ?? ''
+        const rawHeight = el?.style.height ?? ''
+        const finalWidth = rawWidth ? parseFloat(rawWidth) : dragState.startWidth
+        const finalHeight = rawHeight ? parseFloat(rawHeight) : dragState.startHeight
+        // 先清空内联样式（与 move 模式一致）
         if (el) {
           el.style.width = ''
           el.style.height = ''
           el.classList.remove('is-dragging')
         }
+        // 再 emit，让 Vue 响应式接管
+        emit('update-node-size', dragState.targetNodeId!, {
+          width: finalWidth,
+          height: finalHeight,
+        })
       }
     } else {
       // 点击选中

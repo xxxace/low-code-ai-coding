@@ -201,7 +201,18 @@
         "usedAt": 1775378906820,
         "industryId": "all"
       }
+    ],
+    "129042a893c742a69fe4827dfa4153b8": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775902484384,
+        "industryId": "all"
+      }
     ]
   },
-  "lastUpdated": 1775378946014
+  "lastUpdated": 1775903113059
 }

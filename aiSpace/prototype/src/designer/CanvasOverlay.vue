@@ -29,7 +29,7 @@
     <!-- selectedBox（选中高亮 + 操作按钮 + 8 方向缩放手柄，非 dragging 时显示） -->
     <div
       v-if="selectedNodeId && !isDraggingNode"
-      :key="`selected-${selectedNodeId}-${styleVersion}`"
+      :key="`selected-${selectedNodeId}-${styleVersion}-${liveResizeVersion}`"
       class="canvas-overlay__selected-box"
       :style="getSelectedStyle(selectedNodeId)"
     >
@@ -129,6 +129,18 @@ const emit = defineEmits<Emits>()
 
 const overlayRef = ref<HTMLElement | null>(null)
 const draggingBoxRef = ref<HTMLElement | null>(null)
+
+// ============================================================
+// resize RAF 同步（fix: selectedBox 实时跟随 resize）
+// ============================================================
+
+const liveResizeVersion = ref(0)
+let resizeSyncFrame: number | null = null
+
+/** 是否正在 resize（用于 RAF 同步） */
+const isResizingNode = computed(() =>
+  dragState.isDragging && dragState.dragType === 'resize'
+)
 
 // ============================================================
 // 辅助函数
@@ -258,6 +270,30 @@ watch(
   }
 )
 
+// ============================================================
+// resize RAF 同步（fix: selectedBox 实时跟随 resize）
+// ============================================================
+
+watch(
+  () => isResizingNode.value,
+  (resizing) => {
+    if (resizing) {
+      // 开始 resize：启动 RAF 循环同步 selectedBox
+      const sync = () => {
+        liveResizeVersion.value++
+        resizeSyncFrame = requestAnimationFrame(sync)
+      }
+      resizeSyncFrame = requestAnimationFrame(sync)
+    } else {
+      // 结束 resize：停止 RAF
+      if (resizeSyncFrame !== null) {
+        cancelAnimationFrame(resizeSyncFrame)
+        resizeSyncFrame = null
+      }
+    }
+  }
+)
+
 const dropIndicatorStyle = computed(() => {
   if (!dropTarget.value || dropTarget.value.action !== 'sort-relative') {
     return null
@@ -338,6 +374,10 @@ onUnmounted(() => {
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
     rafId = null
+  }
+  if (resizeSyncFrame !== null) {
+    cancelAnimationFrame(resizeSyncFrame)
+    resizeSyncFrame = null
   }
   cleanupNodeOverlay()
   cleanupDrag()
