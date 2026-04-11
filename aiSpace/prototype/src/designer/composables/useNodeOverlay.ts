@@ -73,12 +73,11 @@ export function useNodeOverlay(
    */
   function getSelectedStyle(nodeId: string): CSSProperties {
     if (!canvasEl.value || !overlayEl.value) {
-      console.warn('[useNodeOverlay] getSelectedStyle: canvasEl 或 overlayEl 为 null')
       return { display: 'none' as const }
     }
     const el = canvasEl.value.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`)
     if (!el) {
-      console.warn('[useNodeOverlay] getSelectedStyle: 找不到节点元素', { nodeId, canvasEl: canvasEl.value })
+      // 静默返回（新添加节点时可能尚未渲染）
       return { display: 'none' as const }
     }
 

@@ -334,6 +334,9 @@ export function useDragInteraction(
   function handleDragEnter(e: DragEvent) {
     if (props.interactionMode === 'mouse-drag') return
     e.preventDefault()
+    // html5-dnd 模式：设置 isDragging 以显示 drop zone 指示器
+    dragState.isDragging = true
+    dragState.dragType = 'sort' // 复用 sort 类型
   }
 
   function handleDragOver(e: DragEvent) {
@@ -343,10 +346,13 @@ export function useDragInteraction(
   }
 
   function handleDragLeave(e: DragEvent) {
-    // 仅当真正离开 canvasEl 时才清除 dropTarget
+    // 仅当真正离开 canvasEl 时才清除 dropTarget 和 isDragging
     const related = e.relatedTarget as HTMLElement | null
     if (!canvasEl.value || !canvasEl.value.contains(related)) {
       dropTarget.value = null
+      // html5-dnd 模式：离开 canvas 时重置拖拽状态
+      dragState.isDragging = false
+      dragState.dragType = null
     }
   }
 
@@ -355,6 +361,10 @@ export function useDragInteraction(
     const data = e.dataTransfer?.getData('text/plain')
     emit('drag-end')
     dropTarget.value = null
+    // 重置拖拽状态
+    dragState.isDragging = false
+    dragState.dragType = null
+    dragState.sourceNodeId = null
   }
 
   // ============================================================
@@ -466,6 +476,20 @@ export function useDragInteraction(
         }
       }
     } else {
+      // 检查 targetNodeEl 是否是容器节点（type=void 的节点就是容器）
+      const targetSchema = getNodeSchema(nodeId)
+      if (targetSchema?.type === 'void') {
+        // targetNodeEl 本身就是容器节点 → move-into-container
+        return {
+          sourceNodeId: dragState.sourceNodeId,
+          action: 'move-into-container',
+          targetContainerId: nodeId,
+          beforeNodeId: null,
+          position: null,
+        }
+      }
+
+      // targetNodeEl 不是容器节点，检查其是否在容器内
       const containerEl = targetNodeEl.closest('[data-container-type="absolute"]') as HTMLElement | null
       const rect = targetNodeEl.getBoundingClientRect()
       return {

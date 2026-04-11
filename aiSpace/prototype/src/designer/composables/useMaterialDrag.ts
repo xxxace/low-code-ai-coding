@@ -67,6 +67,9 @@ export function useMaterialDrag(engine: DesignerEngine) {
     e.preventDefault()
 
     let material = draggingMaterial.value
+
+    // fallback：当 draggingMaterial 被其他监听器（如 CanvasOverlay.handleDrop）清空后，
+    // 仍能从 dragstart 时设置的 dataTransfer 中获取数据
     if (!material && e.dataTransfer) {
       const raw = e.dataTransfer.getData('material')
       if (raw) {
@@ -77,6 +80,7 @@ export function useMaterialDrag(engine: DesignerEngine) {
         }
       }
     }
+
     if (!material) return
 
     const fieldKey = `field_${Date.now()}`

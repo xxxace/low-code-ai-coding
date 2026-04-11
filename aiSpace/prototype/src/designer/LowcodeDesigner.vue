@@ -375,7 +375,8 @@ function handleDropComplete(target: any): void {
 
       if (target.beforeNodeId) {
         // 正常排序：beforeNodeId 不为 null
-        engine.sortNodes(target.sourceNodeId, target.beforeNodeId, target.position!)
+        // 使用 moveNodeAcrossContainers 处理跨容器排序（也能处理同容器情况）
+        engine.moveNodeAcrossContainers(target.sourceNodeId, target.beforeNodeId, target.position!)
       } else {
         // 拖到末尾（beforeNodeId=null）：查找同容器最后一个节点，用 'after' 追加（新刺 D 更正）
         const schema = engine.schema.value
@@ -394,7 +395,7 @@ function handleDropComplete(target: any): void {
 
         if (lastNode && (lastNode as any)['x-id'] !== target.sourceNodeId) {
           // 用 'after' 追加到最后一个节点后
-          engine.sortNodes(target.sourceNodeId, (lastNode as any)['x-id'], 'after')
+          engine.moveNodeAcrossContainers(target.sourceNodeId, (lastNode as any)['x-id'], 'after')
         }
       }
       break

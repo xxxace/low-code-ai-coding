@@ -67,10 +67,10 @@
       class="canvas-overlay__dragging-box"
     />
 
-    <!-- dropZoneIndicators（absolute 容器高亮，仅 drag 时渲染） -->
+    <!-- dropZoneIndicators（所有容器高亮，仅 drag 时渲染） -->
     <template v-if="dragState.isDragging">
       <div
-        v-for="container in absoluteContainers"
+        v-for="container in allContainers"
         :key="container['x-id']"
         class="drop-zone-indicator"
         :class="{ 'drop-zone-indicator--active': dropTarget?.targetContainerId === container['x-id'] }"
@@ -194,14 +194,14 @@ const {
 // 计算属性
 // ============================================================
 
-const absoluteContainers = computed<SchemaNode[]>(() => {
+// 容器节点列表（包含所有容器：absolute 和 relative，表现一致）
+const allContainers = computed<SchemaNode[]>(() => {
   const containers: SchemaNode[] = []
 
   function walk(properties: Record<string, SchemaNode>) {
     for (const node of Object.values(properties)) {
-      // fix-C: 排除被拖拽的容器自身（拖拽节点时不应显示自身的 drop zone）
+      // 所有容器节点（type=void）都显示 drop zone，排除自身
       if (
-        (node as any)['x-position-type'] === 'absolute' &&
         node.type === 'void' &&
         (node as any)['x-id'] !== dragState.targetNodeId
       ) {
@@ -214,8 +214,6 @@ const absoluteContainers = computed<SchemaNode[]>(() => {
   }
 
   walk(props.schema.schema.properties)
-
-
   return containers
 })
 
@@ -439,10 +437,14 @@ watch(
   async () => {
     // 等待 DOM 更新完成后再重新计算位置
     await nextTick()
-    // 触发一次重绘（通过读取计算属性）
-    if (props.selectedNodeId) {
-      getSelectedStyle(props.selectedNodeId)
-    }
+    // 修复问题2：使用 setTimeout(0) 确保 FormRenderer 已渲染新节点
+    // nextTick() 只等待当前 microtask 队列，setTimeout(0) 在下一帧之后执行
+    // 这样可以确保 FormRenderer 有足够时间渲染新节点到 DOM
+    setTimeout(() => {
+      if (props.selectedNodeId) {
+        getSelectedStyle(props.selectedNodeId)
+      }
+    }, 0)
   }
 )
 
@@ -462,6 +464,10 @@ watch(
     await nextTick()
     // 递增版本号，触发样式重新计算
     styleVersion.value++
+    // 修复问题1：强制 allContainers computed 重新执行
+    // 因为 props.schema 是快照而非响应式引用，
+    // 需要显式触发依赖 schema 的 computed 更新
+    void allContainers.value
   },
   { deep: true }
 )
