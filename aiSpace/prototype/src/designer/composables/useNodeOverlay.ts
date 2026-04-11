@@ -105,7 +105,10 @@ export function useNodeOverlay(
   function handleMouseOver(e: MouseEvent) {
     if (props.interactionMode === 'html5-dnd') return
     const nodeEl = (e.target as HTMLElement).closest('[data-field-id]') as HTMLElement | null
-    hoverNodeId.value = nodeEl?.getAttribute('data-field-id') ?? null
+    const hoveredId = nodeEl?.getAttribute('data-field-id') ?? null
+    // selected 节点不触发 hover（selected 视觉优先级更高）
+    if (hoveredId && hoveredId === props.selectedNodeId) return
+    hoverNodeId.value = hoveredId
   }
 
   function handleMouseOut(e: MouseEvent) {
