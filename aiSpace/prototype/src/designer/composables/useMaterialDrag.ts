@@ -90,8 +90,8 @@ export function useMaterialDrag(engine: DesignerEngine) {
     if (isFreelayout && canvasRef) {
       // Free 模式：绝对定位，根据鼠标位置计算
       const rect = canvasRef.getBoundingClientRect()
-      const x = Math.max(0, e.clientX - rect.left - 60)
-      const y = Math.max(0, e.clientY - rect.top - 16)
+      const x = Math.round(Math.max(0, e.clientX - rect.left - 60))
+      const y = Math.round(Math.max(0, e.clientY - rect.top - 16))
       fieldSchema['x-position-type'] = 'absolute'
       fieldSchema['x-position'] = { x, y, width: 200, height: 40, zIndex: 1 }
     } else {

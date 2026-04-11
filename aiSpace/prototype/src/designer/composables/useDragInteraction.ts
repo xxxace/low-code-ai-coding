@@ -194,6 +194,12 @@ export function useDragInteraction(
 
     dragState.dragType = isAbsolute ? 'move' : 'sort'
 
+    // fix-2: 立即清除 dropTarget，避免上一次拖拽的残留状态导致 drop zone 错误显示
+    dropTarget.value = null
+
+    // fix-3: 立即更新 selectedNodeId，让 draggingBox 与被拖拽节点同步
+    emit('select-node', nodeId)
+
     emit('drag-start', 'mouse-drag')
   }
 
@@ -246,8 +252,8 @@ export function useDragInteraction(
         }
         // 再 emit 更新，确保 Vue 能正确计算新位置
         emit('update-node-position', dragState.targetNodeId!, {
-          x: (dragState.startNodeX ?? 0) + dx,
-          y: (dragState.startNodeY ?? 0) + dy,
+          x: Math.round((dragState.startNodeX ?? 0) + dx),
+          y: Math.round((dragState.startNodeY ?? 0) + dy),
         })
         // 等待 Vue 完成 DOM 更新
         await nextTick()

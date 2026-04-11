@@ -187,7 +187,12 @@ const absoluteContainers = computed<SchemaNode[]>(() => {
 
   function walk(properties: Record<string, SchemaNode>) {
     for (const node of Object.values(properties)) {
-      if ((node as any)['x-position-type'] === 'absolute' && node.type === 'void') {
+      // fix-C: 排除被拖拽的容器自身（拖拽节点时不应显示自身的 drop zone）
+      if (
+        (node as any)['x-position-type'] === 'absolute' &&
+        node.type === 'void' &&
+        (node as any)['x-id'] !== dragState.targetNodeId
+      ) {
         containers.push(node)
       }
       if ('properties' in node && node.properties) {
@@ -214,14 +219,18 @@ const isDraggingNode = computed(() =>
 let rafId: number | null = null
 
 function syncDraggingBox() {
-  if (!isDraggingNode.value || !draggingBoxRef.value || !overlayRef.value || !props.canvasEl) {
+  // 先调度下一帧：保证 guard return 后动画不终止；ref 还没 mounted 时 RAF 也会继续运行直到元素出现
+  if (isDraggingNode.value) {
+    rafId = requestAnimationFrame(syncDraggingBox)
+  }
+
+  if (!draggingBoxRef.value || !overlayRef.value || !props.canvasEl) {
     return
   }
   const nodeEl = props.canvasEl.querySelector<HTMLElement>(
     `[data-field-id="${dragState.targetNodeId}"]`
   )
   if (!nodeEl) {
-    rafId = requestAnimationFrame(syncDraggingBox)
     return
   }
   const nodeRect = nodeEl.getBoundingClientRect()
@@ -231,8 +240,6 @@ function syncDraggingBox() {
   draggingBoxRef.value.style.top = `${nodeRect.top - overlayRect.top}px`
   draggingBoxRef.value.style.width = `${nodeRect.width}px`
   draggingBoxRef.value.style.height = `${nodeRect.height}px`
-
-  rafId = requestAnimationFrame(syncDraggingBox)
 }
 
 watch(
@@ -250,13 +257,6 @@ watch(
     }
   }
 )
-
-onUnmounted(() => {
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId)
-    rafId = null
-  }
-})
 
 const dropIndicatorStyle = computed(() => {
   if (!dropTarget.value || dropTarget.value.action !== 'sort-relative') {
@@ -335,6 +335,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
   cleanupNodeOverlay()
   cleanupDrag()
 })
