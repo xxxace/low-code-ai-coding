@@ -55,6 +55,30 @@ export function resolveLocalizedString(val: LocalizedString, locale = 'zh'): str
   return val[locale] ?? val['zh'] ?? ''
 }
 
+/**
+ * 将表单字符串输入转换为 schema.default 对应的类型值
+ *
+ * FieldProperties 编辑默认值时，el-input 的 v-model 是 string，
+ * 用户填写后需要按字段类型转换回正确类型再写回 schema。
+ * 空字符串 = 清除默认值。
+ *
+ * @param rawValue 表单输入的字符串（来自 el-input v-model）
+ * @param fieldType 字段类型，决定转换方式
+ * @returns 转换后的默认值，或 undefined（表示清除）
+ */
+export function parseDefaultValue(rawValue: string, fieldType: FieldType): any | undefined {
+  if (rawValue === '' || rawValue == null) {
+    return undefined
+  }
+  if (fieldType === 'number' || fieldType === 'integer') {
+    return Number(rawValue)
+  }
+  if (fieldType === 'boolean') {
+    return rawValue === 'true'
+  }
+  return rawValue
+}
+
 // ============================================================
 // i18n 配置（字段级 i18n key 映射）
 // ============================================================

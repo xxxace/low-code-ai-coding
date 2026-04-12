@@ -321,7 +321,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed, watch, inject, toRaw } from "vue";
-import type { FieldSchema, Reaction } from "../core/schema";
+import { type FieldSchema, Reaction, parseDefaultValue } from "../core/schema";
 import {
   COMPONENT_REGISTRY_KEY,
   type ComponentRegistry,
@@ -553,16 +553,8 @@ function emitUpdate() {
     } : {}),
   } as Partial<FieldSchema>;
 
-  // default 字段：根据类型做类型转换
-  if (form.defaultValue === '' || form.defaultValue == null) {
-    updates.default = undefined;
-  } else if (form.type === 'number' || form.type === 'integer') {
-    updates.default = Number(form.defaultValue);
-  } else if (form.type === 'boolean') {
-    updates.default = form.defaultValue === 'true';
-  } else {
-    updates.default = form.defaultValue;
-  }
+  // default 字段：表单 string → schema 类型的类型转换
+  updates.default = parseDefaultValue(form.defaultValue, form.type);
 
   if (form.minLength !== null) updates.minLength = form.minLength;
   if (form.maxLength !== null) updates.maxLength = form.maxLength;
