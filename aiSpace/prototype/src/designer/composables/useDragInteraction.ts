@@ -111,6 +111,23 @@ export function useDragInteraction(
     return canvasEl.value?.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`) ?? null
   }
 
+  /**
+   * 同步容器的 drag-over 状态到 DOM 属性
+   * 让 VoidContainer 能够通过 CSS 属性 [data-drag-over] 显示引导层
+   */
+  function syncContainerDragOverState(target: DropTarget | null): void {
+    if (!canvasEl.value) return
+
+    // 获取所有容器元素
+    const containerEls = canvasEl.value.querySelectorAll<HTMLElement>('[data-container-type]')
+
+    for (const el of containerEls) {
+      const containerId = el.getAttribute('data-field-id')
+      const isActive = containerId && target?.targetContainerId === containerId
+      el.setAttribute('data-drag-over', isActive ? 'true' : 'false')
+    }
+  }
+
   function updateNodePosition(clientX: number, clientY: number) {
     if (!dragState.targetNodeId) return
     const nodeEl = getNodeElById(dragState.targetNodeId)
@@ -225,6 +242,8 @@ export function useDragInteraction(
       rafId = requestAnimationFrame(() => {
         rafId = null
         dropTarget.value = calcDropTarget(lastMouseX, lastMouseY)
+        // 同步更新容器的 drag-over 状态（通过 DOM 属性，让 VoidContainer 显示引导层）
+        syncContainerDragOverState(dropTarget.value)
       })
     }
   }
@@ -280,6 +299,9 @@ export function useDragInteraction(
       // 点击选中
       emit('select-node', dragState.targetNodeId)
     }
+
+    // 清空容器的 drag-over 视觉状态
+    syncContainerDragOverState(null)
 
     emit('drag-end')
     dragState.isDragging = false
@@ -476,28 +498,55 @@ export function useDragInteraction(
         }
       }
     } else {
-      // 检查 targetNodeEl 是否是容器节点（type=void 的节点就是容器）
       const targetSchema = getNodeSchema(nodeId)
+      const rect = targetNodeEl.getBoundingClientRect()
+      const position = clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+
       if (targetSchema?.type === 'void') {
-        // targetNodeEl 本身就是容器节点 → move-into-container
-        return {
-          sourceNodeId: dragState.sourceNodeId,
-          action: 'move-into-container',
-          targetContainerId: nodeId,
-          beforeNodeId: null,
-          position: null,
+        // 目标是 relative 容器节点 → 三区域判断
+        // 上边缘 20% → 与容器兄弟排序（before）
+        // 下边缘 20% → 与容器兄弟排序（after）
+        // 中间 60% → 拖入添加为子节点
+        const topThreshold = rect.top + rect.height * 0.2
+        const bottomThreshold = rect.top + rect.height * 0.8
+
+        if (clientY < topThreshold) {
+          // 上边缘 → 排序 before
+          return {
+            sourceNodeId: dragState.sourceNodeId,
+            action: 'sort-relative',
+            targetContainerId: null,
+            beforeNodeId: nodeId,
+            position: 'before',
+          }
+        } else if (clientY > bottomThreshold) {
+          // 下边缘 → 排序 after
+          return {
+            sourceNodeId: dragState.sourceNodeId,
+            action: 'sort-relative',
+            targetContainerId: null,
+            beforeNodeId: nodeId,
+            position: 'after',
+          }
+        } else {
+          // 中间 → 拖入添加为子节点
+          return {
+            sourceNodeId: dragState.sourceNodeId,
+            action: 'move-into-container',
+            targetContainerId: nodeId,
+            beforeNodeId: null,
+            position: null,
+          }
         }
       }
 
-      // targetNodeEl 不是容器节点，检查其是否在容器内
-      const containerEl = targetNodeEl.closest('[data-container-type="absolute"]') as HTMLElement | null
-      const rect = targetNodeEl.getBoundingClientRect()
+      // 普通节点 → 排序
       return {
         sourceNodeId: dragState.sourceNodeId,
         action: 'sort-relative',
-        targetContainerId: containerEl?.getAttribute('data-field-id') ?? null,
+        targetContainerId: null,
         beforeNodeId: nodeId,
-        position: clientY < rect.top + rect.height / 2 ? 'before' : 'after',
+        position,
       }
     }
   }

@@ -26,6 +26,15 @@
     @dragleave="handleDragLeave"
     @drop.prevent="handleDrop"
   >
+    <!-- 框选引导层（拖拽时显示可放置区域） -->
+    <div
+      v-if="designMode"
+      class="void-drop-zone-hint"
+      aria-hidden="true"
+    >
+      <span class="void-drop-zone-hint__text">拖入添加子节点</span>
+    </div>
+
     <!-- 操作按钮（流式布局）由 DesignOverlay 叠加层统一处理，不在此处渲染 -->
     <!-- absolute 容器由 AbsoluteNodeOverlay 处理 -->
 
@@ -309,15 +318,11 @@ let dragEnterCounter = 0; // 解决 dragenter/dragleave 冒泡问题
 
 function handleDragOver(e: DragEvent): void {
   if (!designMode.value || isAbsoluteMode.value) return;
-  // 只处理从物料面板拖入的新节点（没有 nodeId）
+  // 处理所有拖拽进入（物料面板 + 画布节点）
   const dataTransfer = e.dataTransfer;
   if (!dataTransfer) return;
-  // 检查是否是拖拽新物料
-  const raw = dataTransfer.getData('material');
-  if (raw) {
-    dragEnterCounter++;
-    isDragOver.value = true;
-  }
+  dragEnterCounter++;
+  isDragOver.value = true;
 }
 
 function handleDragLeave(): void {
@@ -396,11 +401,41 @@ function handleDrop(e: DragEvent): void {
   min-width: 0;
 }
 
-/** 拖拽进入容器时的视觉反馈 */
-.void-wrapper--drag-over {
+/** 拖拽进入容器时的视觉反馈（mouse-drag 模式：通过 data-drag-over 属性；HTML5 DnD 模式：通过 class） */
+.void-wrapper[data-drag-over="true"],
+.void-wrapper.void-wrapper--drag-over {
   outline: 2px dashed #67c23a;
   outline-offset: 2px;
   background: rgba(103, 194, 58, 0.1);
+}
+
+/** 框选引导层（absolute 定位，覆盖整个容器） */
+.void-drop-zone-hint {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed var(--el-color-primary-light-5, #a0cfff);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(64, 158, 255, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100; /* 高于 el-card 的 z-index */
+}
+
+/** 拖拽进入时显示引导（mouse-drag 模式：data-drag-over 属性；HTML5 DnD 模式：class） */
+.void-wrapper[data-drag-over="true"] .void-drop-zone-hint,
+.void-wrapper.void-wrapper--drag-over .void-drop-zone-hint {
+  opacity: 1;
+}
+
+.void-drop-zone-hint__text {
+  color: var(--el-color-primary-light-3, #409eff);
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
 }
 
 /** 隐藏 CollapseItem 的展开箭头（设计模式下不需要） */

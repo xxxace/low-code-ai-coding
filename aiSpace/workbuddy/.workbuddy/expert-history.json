@@ -212,7 +212,27 @@
         "usedAt": 1775902484384,
         "industryId": "all"
       }
+    ],
+    "c0bac435e2ca4e2cb83c338711de96e6": [
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1775922243682,
+        "industryId": "all"
+      },
+      {
+        "expertId": "UiDesigner",
+        "name": "Sam",
+        "profession": "UI设计师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/01-Design/UiDesigner/UiDesigner.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/01-Design/UiDesigner/UiDesigner_zh.md",
+        "usedAt": 1775921975332,
+        "industryId": "all"
+      }
     ]
   },
-  "lastUpdated": 1775903113059
+  "lastUpdated": 1775922272061
 }
