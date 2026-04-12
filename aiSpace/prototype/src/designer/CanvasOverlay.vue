@@ -34,7 +34,11 @@
       :style="getSelectedStyle(selectedNodeId)"
     >
       <!-- 操作按钮 -->
-      <div class="action-buttons">
+      <div
+        class="action-buttons"
+        :class="`action-buttons--${getToolbarPlacement(selectedNodeId)}`"
+        :style="getToolbarAlignStyle(selectedNodeId)"
+      >
         <span class="label">{{ getNodeLabel(selectedNodeId) }}</span>
         <!-- 上移/下移按钮（仅 relative 节点显示） -->
         <button v-if="!isSelectedNodeAbsolute" @click.stop="handleMoveNode('up')" title="上移">↑</button>
@@ -334,7 +338,80 @@ function isAbsoluteNode(nodeId: string): boolean {
 
 function getNodeLabel(nodeId: string): string {
   const node = getNodeById(nodeId)
-  return (node as any)?.title ?? (node as any)?.['x-component'] ?? '未知'
+  if (!node) return '未知'
+  // 优先读 title（字段标签），再读 x-decorator-props.label，
+  // 最后读 x-component 但映射成中文友好名，避免显示英文组件名
+  const title = (node as any).title
+  if (title) return title
+  const decoratorLabel = (node as any)?.['x-decorator-props']?.label
+  if (decoratorLabel) return decoratorLabel
+  const componentName = (node as any)?.['x-component'] as string | undefined
+  // 简单映射常见组件名到中文
+  const componentLabelMap: Record<string, string> = {
+    Input: '输入框',
+    Select: '下拉选择',
+    DatePicker: '日期选择',
+    TimePicker: '时间选择',
+    Switch: '开关',
+    Checkbox: '多选框',
+    Radio: '单选框',
+    InputNumber: '数字输入',
+    Upload: '上传',
+    Rate: '评分',
+    Slider: '滑块',
+    ColorPicker: '颜色选择',
+    Cascader: '级联选择',
+    TreeSelect: '树形选择',
+    CardContainer: '卡片容器',
+    TabsContainer: '标签页容器',
+    CollapseContainer: '折叠面板',
+    Divider: '分割线',
+  }
+  if (componentName && componentLabelMap[componentName]) {
+    return componentLabelMap[componentName]
+  }
+  return componentName ?? '未知'
+}
+
+/**
+ * 计算 toolbar 的定位方向和水平对齐方式
+ * - 垂直：节点距 overlay 顶部不足 36px 时翻转到节点内部
+ * - 水平：通过 CSS `right: 0` 默认右对齐，超出左边界时改为左对齐（由 getToolbarAlignStyle 处理）
+ */
+function getToolbarPlacement(nodeId: string): 'above' | 'inside' {
+  if (!overlayRef.value || !props.canvasEl) return 'above'
+  const el = props.canvasEl.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`)
+  if (!el) return 'above'
+  const overlayRect = overlayRef.value.getBoundingClientRect()
+  const nodeRect = el.getBoundingClientRect()
+  const spaceAbove = nodeRect.top - overlayRect.top
+  return spaceAbove < 36 ? 'inside' : 'above'
+}
+
+/**
+ * 计算 toolbar 水平对齐方式
+ * 默认右对齐（right: 0），当 toolbar 超出 overlay 左边界时切换为左对齐（left: 0）
+ */
+function getToolbarAlignStyle(nodeId: string): Record<string, string> {
+  if (!overlayRef.value || !props.canvasEl) return {}
+  const el = props.canvasEl.querySelector<HTMLElement>(`[data-field-id="${nodeId}"]`)
+  if (!el) return {}
+
+  const overlayRect = overlayRef.value.getBoundingClientRect()
+  const nodeRect = el.getBoundingClientRect()
+
+  // 找到已渲染的 toolbar DOM 元素来获取其实际宽度
+  const toolbarEl = overlayRef.value.querySelector<HTMLElement>('.action-buttons')
+  if (!toolbarEl) return {}
+
+  const toolbarWidth = toolbarEl.offsetWidth
+  // toolbar 用 right: 0 定位时，左边缘位置
+  const toolbarLeftEdge = nodeRect.left - overlayRect.left + nodeRect.width - toolbarWidth
+  // toolbar 超出 overlay 左边界
+  if (toolbarLeftEdge < 0) {
+    return { left: '0', right: 'auto' }
+  }
+  return {}
 }
 
 function getContainerStyle(container: SchemaNode) {
@@ -485,6 +562,7 @@ function refreshSelectedBox() {
   position: absolute;
   inset: 0;
   z-index: 9999;
+  overflow: visible;  /* 允许 toolbar 溢出画布边界显示 */
 }
 
 /* hoverBox：透明，只显示边框，不拦截事件 */
@@ -511,23 +589,40 @@ function refreshSelectedBox() {
 }
 
 /* 操作按钮区域：需要拦截点击 */
+/* 紧贴 selectedBox 顶部边缘，右对齐，无间距 */
 .action-buttons {
   pointer-events: auto;
-  display: flex;
+  display: inline-flex;          /* 宽度由内容决定 */
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   background: #409eff;
-  border-radius: 4px;
+  border-radius: 0;             /* 方形，与 selectedBox 边框贴合 */
   position: absolute;
-  top: -32px;
-  right: 0;
+  right: 0;                     /* 右对齐 selectedBox 右边缘 */
+  white-space: nowrap;
+  box-shadow: none;
+  z-index: 20;
+}
+
+/* 默认：toolbar 在节点上方，紧贴 selectedBox 顶边 */
+.action-buttons--above {
+  top: -26px;
+}
+
+/* 翻转：节点靠近画布顶边时，toolbar 显示在节点内部顶部，紧贴顶边 */
+.action-buttons--inside {
+  top: 0;
 }
 
 .label {
   font-size: 11px;
+  font-weight: 500;
   color: #fff;
-  margin-right: 4px;
+  margin-right: 2px;
+  max-width: 120px;              /* 超长 label 截断，不让 toolbar 撑太宽 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action-buttons button {
@@ -537,6 +632,10 @@ function refreshSelectedBox() {
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 2px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
 }
 
 .action-buttons button:hover {
