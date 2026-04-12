@@ -298,7 +298,27 @@ onBeforeUnmount(() => {
 // 事件处理
 // ============================================================
 
-function handleClick(): void {
+function handleClick(e: MouseEvent): void {
+  // 检查事件路径：如果 click 来自 VoidContainer 内部的子节点（有 data-field-id），
+  // 说明子节点会处理选中，这里应该让事件冒泡，不重复选中容器
+  // 注意：不检查 data-field-id === 容器自身，因为 handleClick 本来就是容器的 click
+  const composedPath = e.composedPath()
+  const clickedOnChildNode = composedPath.some(el => {
+    if (el instanceof HTMLElement && el.hasAttribute?.('data-field-id')) {
+      const fieldId = el.getAttribute('data-field-id')
+      // 如果找到的是容器自身，跳过
+      if (fieldId === props.schema["x-id"]) return false
+      // 如果找到的是子节点（FieldRenderer/VoidContainer），返回 true
+      return true
+    }
+    return false
+  })
+  
+  // 如果点击的是内部子节点，让子节点处理选中，容器不处理
+  if (clickedOnChildNode) {
+    return
+  }
+  
   const nodeId = props.schema["x-id"];
   if (!nodeId) return;
   if (props.onNodeClick) {

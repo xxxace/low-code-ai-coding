@@ -178,21 +178,20 @@ export function useDragInteraction(
     const schema = getNodeSchema(nodeId)
     const isAbsolute = (schema as any)?.['x-position-type'] === 'absolute'
 
-    // fix-3: 检查点击目标是否直接是 nodeEl 本身（而非其子元素）
-    // 如果 e.target 是 nodeEl 的子元素，说明点击的是容器内部的节点，
-    // 应该让事件冒泡到子节点的 click handler
-    // fix-4: 对于 absolute 节点，放宽判断条件——只要点击在节点范围内就允许拖拽
-    // 因为 absolute 节点的 overlay 和目标节点是同一个 DOM 元素
-    const isDirectClick = e.target === nodeEl || 
-                          (e.target as HTMLElement).parentElement === nodeEl ||
-                          nodeEl.contains(e.target as Node)
+    // 判断是否"直接点击节点自身"（而非内部子元素）
+    // 只有当 e.target 直接是 nodeEl 本身或直接子元素时才算直接点击
+    // 注意：nodeEl.contains(e.target) 会让点击内部任意元素都算直接点击，
+    // 这会导致点击未选中节点时直接启动拖拽，而不是先选中
+    const isDirectClick =
+      e.target === nodeEl ||
+      (e.target as HTMLElement).parentElement === nodeEl
 
     // fix: 如果点击的是流式布局节点（非 absolute），且不是当前选中的节点，
     // 或者点击的是容器内部的子节点（非直接点击容器本身），
-    // 则只触发选中，不启动拖拽，让 click 事件正常传递到子组件
-    // fix-4: absolute 节点放宽判断，允许点击子元素也启动拖拽
+    // 则只触发选中，不启动拖拽
+    // 注意：不需要阻止事件冒泡，因为 VoidContainer 会检查 composedPath 判断是否来自子节点
     if (!isAbsolute && nodeId !== selectedNodeId.value && !isDirectClick) {
-      // 不阻止事件，让 FieldRenderer/VoidContainer 的 @click 处理选中
+      e.stopPropagation()
       return
     }
 
