@@ -453,21 +453,11 @@ function reactionFulfillLabel(r: Reaction): string {
 // 是否有占位文本的组件
 // ============================================================
 
+// A-03: 从 registry 的 propSetters 中推断组件是否支持 placeholder（而非硬编码白名单）
 const hasPlaceholder = computed(() => {
-  const comp = props.schema["x-component"] ?? "";
-  return [
-    "Input",
-    "Textarea",
-    "Password",
-    "Select",
-    "DatePicker",
-    "DateRangePicker",
-    "TimePicker",
-    "DateTimePicker",
-    "Cascader",
-    "TreeSelect",
-    "InputNumber",
-  ].includes(comp);
+  return propSetterGroups.value.some((group) =>
+    group.setters.some((setter) => setter.key === 'placeholder')
+  );
 });
 
 // ============================================================
@@ -497,8 +487,8 @@ watch(
     form.minLength = schema.minLength ?? null;
     form.maxLength = schema.maxLength ?? null;
 
-    // 同步 componentPropsForm
-    const cp = schema["x-component-props"] ?? {};
+    // B-05 fix: schema 是 reactive proxy，需先 toRaw() 脱 reactive 外衣再 structuredClone
+    const cp = structuredClone(toRaw(schema)["x-component-props"] ?? {});
     for (const key of Object.keys(componentPropsForm)) {
       delete componentPropsForm[key];
     }
@@ -541,7 +531,6 @@ function emitUpdate() {
     title: form.title,
     description: form.description,
     type: form.type as FieldSchema["type"],
-    default: form.defaultValue || undefined,
     "x-span": form.span,
     "x-display": form.display,
     "x-pattern": form.pattern,
@@ -563,6 +552,17 @@ function emitUpdate() {
       }
     } : {}),
   } as Partial<FieldSchema>;
+
+  // default 字段：根据类型做类型转换
+  if (form.defaultValue === '' || form.defaultValue == null) {
+    updates.default = undefined;
+  } else if (form.type === 'number' || form.type === 'integer') {
+    updates.default = Number(form.defaultValue);
+  } else if (form.type === 'boolean') {
+    updates.default = form.defaultValue === 'true';
+  } else {
+    updates.default = form.defaultValue;
+  }
 
   if (form.minLength !== null) updates.minLength = form.minLength;
   if (form.maxLength !== null) updates.maxLength = form.maxLength;
@@ -586,6 +586,8 @@ function handlePositionTypeChange() {
       form.positionHeight = 40;
     }
   }
+  // S-02: absolute→relative 时，emitUpdate 会自动排除 x-position（因为 form.positionType === 'relative'）
+  // 效果等同于清除 x-position
   emitUpdate();
 }
 </script>

@@ -267,6 +267,7 @@ const pagePositionType = computed({
   set: (type) => {
     if (!engine.schema.value) return;
     engine.schema.value['x-position-type'] = type as 'relative' | 'absolute';
+    engine.saveSnapshot();
   },
 });
 
@@ -344,14 +345,6 @@ function handleMoveToContainer(nodeId: string, containerId: string): void {
   engine.moveNodeToContainer(nodeId, containerId);
 }
 
-function handleMoveAcrossContainers(
-  nodeId: string,
-  targetId: string,
-  position: 'before' | 'after'
-): void {
-  engine.moveNodeAcrossContainers(nodeId, targetId, position);
-}
-
 function handleDragStart(mode: 'mouse-drag' | 'html5-dnd'): void {
   interactionMode.value = mode
 }
@@ -403,9 +396,7 @@ function handleDropComplete(target: any): void {
     case 'move-absolute':
       // absolute 节点移动，已在 CanvasOverlay 内部通过 update-node-position emit 处理
       break
-    case 'move-into-container':
-    case 'show-container-dropzone': {
-      // engine.moveNodeToContainer(sourceId, target.targetContainerId)
+    case 'move-into-container': {
       if (!target.sourceNodeId || !target.targetContainerId) {
         console.warn('[LowcodeDesigner] move-into-container: 缺少 sourceNodeId 或 targetContainerId')
         break
@@ -541,7 +532,7 @@ function handleFileSelected(event: Event): void {
       // 自动补全缺失字段
       const schema = validation.schema!;
       if (!schema.id) {
-        schema.id = generateSchemaId();
+        schema.id = engine.generateNodeId();
       }
       if (!schema.__meta__) {
         schema.__meta__ = {
@@ -585,12 +576,7 @@ function doImport(schema: PageSchema): void {
   ElMessage.success('Schema 导入成功');
 }
 
-/**
- * 生成简短 ID
- */
-function generateSchemaId(): string {
-  return `schema_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
+
 </script>
 
 <style scoped>

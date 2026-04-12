@@ -28,8 +28,9 @@
 
     <!-- selectedBox（选中高亮 + 操作按钮 + 8 方向缩放手柄，非 dragging 时显示） -->
     <div
+      ref="selectedBoxRef"
       v-if="selectedNodeId && !isDraggingNode"
-      :key="`selected-${selectedNodeId}-${styleVersion}-${liveResizeVersion}`"
+      :key="`selected-${selectedNodeId}-${styleVersion}`"
       class="canvas-overlay__selected-box"
       :style="getSelectedStyle(selectedNodeId)"
     >
@@ -96,7 +97,7 @@ import { ref, computed, onMounted, onUnmounted, watch, toRef, type Ref, nextTick
 import type { PageSchema, SchemaNode } from '../core/schema'
 import { findNodeById } from './engine/schemaUtils'
 import { useNodeOverlay } from './composables/useNodeOverlay'
-import { useDragInteraction } from './composables/useDragInteraction'
+import { useDragInteraction, type DragEmits } from './composables/useDragInteraction'
 
 // ============================================================
 // Props & Emits
@@ -133,12 +134,15 @@ const emit = defineEmits<Emits>()
 
 const overlayRef = ref<HTMLElement | null>(null)
 const draggingBoxRef = ref<HTMLElement | null>(null)
+// S-05: selectedBox ref，用于 resize RAF 期间直接操作 DOM（避免每帧重建）
+const selectedBoxRef = ref<HTMLElement | null>(null)
+// R-08: 维护内部 canvasElRef，cleanup 时先对当前 ref 清理再切换，避免旧引用监听器泄漏
+const canvasElRef = ref<HTMLElement | null>(null)
 
 // ============================================================
 // resize RAF 同步（fix: selectedBox 实时跟随 resize）
 // ============================================================
 
-const liveResizeVersion = ref(0)
 let resizeSyncFrame: number | null = null
 
 /** 是否正在 resize（用于 RAF 同步） */
@@ -174,7 +178,7 @@ const {
   getSelectedStyle,
   setupHoverListeners,
   cleanup: cleanupNodeOverlay,
-} = useNodeOverlay(props, toRef(() => props.canvasEl), overlayRef)
+} = useNodeOverlay(props, canvasElRef, overlayRef)
 
 const {
   dragState,
@@ -189,8 +193,8 @@ const {
   cleanup: cleanupDrag,
 } = useDragInteraction(
   props,
-  emit,
-  toRef(() => props.canvasEl),
+  emit as unknown as (event: string, ...args: any[]) => void,
+  canvasElRef,
   toRef(() => props.selectedNodeId)
 )
 
@@ -280,9 +284,22 @@ watch(
   () => isResizingNode.value,
   (resizing) => {
     if (resizing) {
-      // 开始 resize：启动 RAF 循环同步 selectedBox
+      // S-05: 开始 resize：启动 RAF 循环直接操作 selectedBoxRef DOM（避免 key 重建）
       const sync = () => {
-        liveResizeVersion.value++
+        // 读取被 resize 节点的实时尺寸（通过 data-field-id 查找）
+        if (selectedBoxRef.value && props.canvasEl && props.selectedNodeId) {
+          const nodeEl = props.canvasEl.querySelector<HTMLElement>(
+            `[data-field-id="${props.selectedNodeId}"]`
+          )
+          if (nodeEl && overlayRef.value) {
+            const nodeRect = nodeEl.getBoundingClientRect()
+            const overlayRect = overlayRef.value.getBoundingClientRect()
+            selectedBoxRef.value.style.left = `${nodeRect.left - overlayRect.left}px`
+            selectedBoxRef.value.style.top = `${nodeRect.top - overlayRect.top}px`
+            selectedBoxRef.value.style.width = `${nodeRect.width}px`
+            selectedBoxRef.value.style.height = `${nodeRect.height}px`
+          }
+        }
         resizeSyncFrame = requestAnimationFrame(sync)
       }
       resizeSyncFrame = requestAnimationFrame(sync)
@@ -441,6 +458,8 @@ function getContainerStyle(container: SchemaNode) {
 // ============================================================
 
 onMounted(() => {
+  // R-08: 初始化时同步 canvasElRef
+  canvasElRef.value = props.canvasEl
   setupHoverListeners()
   setupDragListeners()
 })
@@ -465,32 +484,18 @@ onUnmounted(() => {
 watch(
   () => props.canvasEl,
   (newEl) => {
+    // R-08: 先清理当前 canvasElRef 指向的旧元素上的监听器
+    // cleanupNodeOverlay/cleanupDrag 使用 canvasElRef.value（此时还是旧值）
     cleanupNodeOverlay()
     cleanupDrag()
+    // 再更新内部 ref 为新值
+    canvasElRef.value = newEl
     if (newEl) {
       setupHoverListeners()
       setupDragListeners()
     }
   }
 )
-
-// ============================================================
-// 监听 dropTarget 变化
-// ============================================================
-
-watch(
-  dropTarget,
-  (target) => {
-    if (target && target.action === 'sort-relative') {
-      // relative 排序，emit 到父组件
-      // 实际的 drop 处理由 handleMouseUp 完成
-    }
-  }
-)
-
-// ============================================================
-// 监听选中节点变化，强制重新计算 selectedBox 位置（fix: 排序/拖拽后位置不更新）
-// ============================================================
 
 // ============================================================
 // 辅助函数
@@ -509,22 +514,6 @@ function handleMoveNode(direction: 'up' | 'down') {
   })
 }
 
-watch(
-  () => props.selectedNodeId,
-  async () => {
-    // 等待 DOM 更新完成后再重新计算位置
-    await nextTick()
-    // 修复问题2：使用 setTimeout(0) 确保 FormRenderer 已渲染新节点
-    // nextTick() 只等待当前 microtask 队列，setTimeout(0) 在下一帧之后执行
-    // 这样可以确保 FormRenderer 有足够时间渲染新节点到 DOM
-    setTimeout(() => {
-      if (props.selectedNodeId) {
-        getSelectedStyle(props.selectedNodeId)
-      }
-    }, 0)
-  }
-)
-
 // ============================================================
 // 样式版本计数器（fix: 强制重新计算 selectedBox 样式）
 // ============================================================
@@ -541,10 +530,6 @@ watch(
     await nextTick()
     // 递增版本号，触发样式重新计算
     styleVersion.value++
-    // 修复问题1：强制 allContainers computed 重新执行
-    // 因为 props.schema 是快照而非响应式引用，
-    // 需要显式触发依赖 schema 的 computed 更新
-    void allContainers.value
   },
   { deep: true }
 )

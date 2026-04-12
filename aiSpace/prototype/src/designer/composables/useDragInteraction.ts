@@ -38,17 +38,18 @@ interface DropTarget {
   position: 'before' | 'after' | null
 }
 
-interface Emits {
-  'select-node': [nodeId: string | null]
-  'remove-node': [nodeId: string]
-  'duplicate-node': [nodeId: string]
-  'update-node-position': [nodeId: string, position: Position]
-  'update-node-size': [nodeId: string, size: Size]
-  'sort-nodes': [params: SortParams]
-  'move-node-to-container': [nodeId: string, containerId: string]
-  'drag-start': [mode: 'mouse-drag' | 'html5-dnd']
-  'drag-end': []
-  'drop-complete': [target: DropTarget]
+// A-02: emit 类型安全化
+export interface DragEmits {
+  'select-node': (nodeId: string | null) => void
+  'remove-node': (nodeId: string) => void
+  'duplicate-node': (nodeId: string) => void
+  'update-node-position': (nodeId: string, position: Position) => void
+  'update-node-size': (nodeId: string, size: Size) => void
+  'sort-nodes': (params: SortParams) => void
+  'move-node-to-container': (nodeId: string, containerId: string) => void
+  'drag-start': (mode: 'mouse-drag' | 'html5-dnd') => void
+  'drag-end': () => void
+  'drop-complete': (target: DropTarget) => void
 }
 
 interface Position {
@@ -69,9 +70,10 @@ interface SortParams {
 
 const CLICK_THRESHOLD = 5 // px
 
+// A-02: emit 接受 Vue emit 函数；DragEmits 保留为类型定义，供 CanvasOverlay.vue 断言用
 export function useDragInteraction(
   props: Readonly<Props>,
-  emit: (event: any, ...args: any[]) => void,
+  emit: (event: string, ...args: any[]) => void,
   canvasEl: Ref<HTMLElement | null>,
   selectedNodeId: Ref<string | null>  // 用于 handleResizeStart（新刺 B）
 ) {
@@ -186,11 +188,15 @@ export function useDragInteraction(
       e.target === nodeEl ||
       (e.target as HTMLElement).parentElement === nodeEl
 
-    // fix: 如果点击的是流式布局节点（非 absolute），且不是当前选中的节点，
-    // 或者点击的是容器内部的子节点（非直接点击容器本身），
-    // 则只触发选中，不启动拖拽
-    // 注意：不需要阻止事件冒泡，因为 VoidContainer 会检查 composedPath 判断是否来自子节点
-    if (!isAbsolute && nodeId !== selectedNodeId.value && !isDirectClick) {
+    // B-04 fix: 流式节点"先选中再拖"两次点击模式
+    // 点击未选中节点 → 只选中，不拖拽（需要第二次点击才拖）
+    // 点击已选中节点 → 立即启动拖拽
+    // selectedNodeId !== nodeId 判断确保第一次点击选中的节点不受 isDirectClick 影响
+    if (
+      !isAbsolute &&
+      nodeId !== selectedNodeId.value &&
+      !isDirectClick
+    ) {
       e.stopPropagation()
       return
     }
@@ -280,8 +286,8 @@ export function useDragInteraction(
         // 正确处理空字符串：parseFloat('') 返回 NaN，需兜底
         const rawWidth = el?.style.width ?? ''
         const rawHeight = el?.style.height ?? ''
-        const finalWidth = rawWidth ? parseFloat(rawWidth) : dragState.startWidth
-        const finalHeight = rawHeight ? parseFloat(rawHeight) : dragState.startHeight
+        const finalWidth = Math.max(40, rawWidth ? parseFloat(rawWidth) : dragState.startWidth)
+        const finalHeight = Math.max(20, rawHeight ? parseFloat(rawHeight) : dragState.startHeight)
         // 先清空内联样式（与 move 模式一致）
         if (el) {
           el.style.width = ''
@@ -379,7 +385,8 @@ export function useDragInteraction(
 
   function handleDrop(e: DragEvent) {
     e.preventDefault()
-    const data = e.dataTransfer?.getData('text/plain')
+    // B-01: 使用正确的 dataTransfer key 'material'（与 useMaterialDrag.ts 中 setData('material', ...) 对应）
+    const _data = e.dataTransfer?.getData('material')
     emit('drag-end')
     dropTarget.value = null
     // 重置拖拽状态
@@ -393,12 +400,12 @@ export function useDragInteraction(
   // ============================================================
 
   function calcDropTarget(clientX: number, clientY: number): DropTarget {
-    // 视口边界检查
+    // 视口边界检查（使用 documentElement.clientWidth/clientHeight 不含滚动条）
     if (
       clientX < 0 ||
       clientY < 0 ||
-      clientX > window.innerWidth ||
-      clientY > window.innerHeight
+      clientX > document.documentElement.clientWidth ||
+      clientY > document.documentElement.clientHeight
     ) {
       return (
         dropTarget.value ?? {
@@ -569,6 +576,7 @@ export function useDragInteraction(
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
     canvasEl.value?.removeEventListener('dragenter', handleDragEnter)
+    canvasEl.value?.removeEventListener('dragover', handleDragOver)
     canvasEl.value?.removeEventListener('dragleave', handleDragLeave)
     canvasEl.value?.removeEventListener('drop', handleDrop)
     if (rafId !== null) cancelAnimationFrame(rafId)
@@ -589,7 +597,6 @@ export function useDragInteraction(
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    calcDropTarget,
     setupDragListeners,
     cleanup,
   }
